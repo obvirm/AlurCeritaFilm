@@ -1,0 +1,153 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs/promises';
+
+const execAsync = promisify(exec);
+
+/**
+ * Runs FFmpeg to render the final MP4.
+ * Processes each scene individually with zoom+blur filter, then concatenates.
+ *
+ * @param manifestPath Path to the manifest.json created by analyzer
+ * @param outputMp4Path Where to save the final video
+ * @param videoPath Path to the source video file
+ * @param narrationAudioPath Optional narration-only audio track
+ */
+export async function renderShortVideo(
+  manifestPath: string,
+  outputMp4Path: string,
+  videoPath: string,
+  narrationAudioPath?: string,
+  sceneDurationsPath?: string
+) {
+  const absManifest = path.resolve(manifestPath);
+  const absOutput = path.resolve(outputMp4Path);
+  const actualVideoPath = path.resolve(videoPath);
+  const actualNarrationPath = narrationAudioPath ? path.resolve(narrationAudioPath) : undefined;
+  const sceneDurationsData = sceneDurationsPath
+    ? JSON.parse(await fs.readFile(path.resolve(sceneDurationsPath), 'utf8'))
+    : undefined;
+  const sceneDurations = sceneDurationsData?.sceneDurationsSec as number[] | undefined;
+
+  console.log(`       Video source: ${actualVideoPath}`);
+  if (actualNarrationPath) console.log(`       Narration: ${actualNarrationPath}`);
+  if (sceneDurations) console.log(`       Per-scene narration durations: ${sceneDurationsPath}`);
+
+  // Read manifest
+  const manifestData = await fs.readFile(absManifest, 'utf8');
+  const inputProps = JSON.parse(manifestData);
+  const scenes = inputProps.scenes || [];
+
+  if (scenes.length === 0) {
+    throw new Error('No scenes found in manifest');
+  }
+
+  // Target Resolution: 1080x1920 (9:16)
+  const W = 1080;
+  const H = 1920;
+
+  // Filter: background blur + center video. Apply a subtle 1.15x center zoom
+  // to the foreground so the lower-right source watermark is outside frame.
+  const foregroundZoom = 1.15;
+  const filterComplex = `[0:v]split=2[bg_src][fg_src];[bg_src]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=50[bga];[bga]eq=brightness=-0.3[bg];[fg_src]scale=${W}:${H}:force_original_aspect_ratio=decrease,scale=iw*${foregroundZoom}:ih*${foregroundZoom}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2:format=auto[outv]`.replace(/\s+/g, '');
+
+  // Temp directory for scene clips
+  const tempDir = path.join(path.dirname(absOutput), '_temp_scenes');
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const sceneClips: string[] = [];
+
+
+  console.log(`[1/3] Rendering ${scenes.length} scenes individually...`);
+
+  for (let i = 0; i < scenes.length; i++) {
+    const scene = scenes[i];
+    const startSec = scene.start_sec;
+    const endSec = scene.end_sec;
+
+    // Skip invalid scenes
+    if (endSec <= startSec || endSec - startSec < 0.5) {
+      console.warn(`       Scene ${i + 1} skipped: invalid duration (${startSec}s-${endSec}s)`);
+      continue;
+    }
+
+    // Narration is the master timeline: every visual clip has exactly the
+    // natural narration duration. Shorter clips are cut; longer narration
+    // gets a frozen last frame, never footage from the next scene.
+    const sourceDuration = endSec - startSec;
+    const duration = sceneDurations && sceneDurations[i] !== undefined
+      ? Math.max(0.5, sceneDurations[i])
+      : sourceDuration;
+    const extraVisualDuration = Math.max(0, duration - sourceDuration);
+    // If narration is shorter, center the crop inside the annotated scene so
+    // the main action is less likely to be lost by always taking its beginning.
+    const visualStart = duration < sourceDuration
+      ? startSec + (sourceDuration - duration) / 2
+      : startSec;
+    const visualInputDuration = Math.min(sourceDuration, duration);
+    const sceneFilterComplex = extraVisualDuration > 0.01
+      ? filterComplex.replace('[outv]', `,tpad=stop_mode=clone:stop_duration=${extraVisualDuration.toFixed(3)}[outv]`)
+      : filterComplex;
+    const clipPath = path.join(tempDir, `scene_${String(i).padStart(4, '0')}.mp4`);
+
+    const cmd = `ffmpeg -y -ss ${visualStart.toFixed(3)} -t ${visualInputDuration.toFixed(3)} -i "${actualVideoPath}" -filter_complex "${sceneFilterComplex}" -map "[outv]" -an -t ${duration.toFixed(3)} -c:v libx264 -preset fast -crf 23 "${clipPath}"`;
+
+    try {
+      await execAsync(cmd, { maxBuffer: 1024 * 1024 * 10, timeout: 60000 });
+      sceneClips.push(clipPath);
+      process.stdout.write(`\r       Scene ${i + 1}/${scenes.length} done (${startSec}s-${endSec}s)`);
+    } catch (e: any) {
+      console.warn(`\n       Scene ${i + 1} failed: ${e.message.substring(0, 50)}`);
+    }
+  }
+
+  console.log(`\n[2/3] Concatenating ${sceneClips.length} scenes...`);
+
+  if (sceneClips.length === 0) {
+    throw new Error('No scenes were rendered successfully');
+  }
+
+  // Create concat list file
+  const concatListPath = path.join(tempDir, 'concat.txt');
+  const concatContent = sceneClips.map(f => `file '${f.replace(/\\/g, '/')}'`).join('\n');
+  await fs.writeFile(concatListPath, concatContent);
+
+  // Concatenate all scenes into one silent visual track.
+  const silentVideoPath = actualNarrationPath
+    ? path.join(tempDir, 'visual_only.mp4')
+    : absOutput;
+  const concatCmd = `ffmpeg -y -f concat -safe 0 -i "${concatListPath}" -c copy "${silentVideoPath}"`;
+
+  try {
+    await execAsync(concatCmd, { maxBuffer: 1024 * 1024 * 10, timeout: 120000 });
+  } catch (e: any) {
+    throw new Error(`Concat failed: ${e.message}`);
+  }
+
+  // The source clips are already silent. Map only the OmniVoice input as audio,
+  // so original video audio and music can never enter the final output.
+  if (actualNarrationPath) {
+    await fs.access(actualNarrationPath);
+    const muxCmd = `ffmpeg -y -i "${silentVideoPath}" -i "${actualNarrationPath}" -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -ar 48000 -ac 1 -shortest -movflags +faststart "${absOutput}"`;
+    try {
+      await execAsync(muxCmd, { maxBuffer: 1024 * 1024 * 10, timeout: 120000 });
+    } catch (e: any) {
+      throw new Error(`Narration mux failed: ${e.message}`);
+    }
+  }
+
+  // Cleanup temp files
+  for (const clip of sceneClips) {
+    try { await fs.unlink(clip); } catch {}
+  }
+  try { await fs.unlink(concatListPath); } catch {}
+  if (actualNarrationPath) {
+    try { await fs.unlink(silentVideoPath); } catch {}
+  }
+  try { await fs.rmdir(tempDir); } catch {}
+
+  console.log(`[3/3] Done!`);
+  console.log(`       Output: ${absOutput}`);
+  console.log(`       Scenes: ${sceneClips.length}`);
+}

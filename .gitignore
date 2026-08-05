@@ -1,0 +1,51 @@
+# Dependencies / environments
+node_modules/
+.venv/
+.venv-omnivoice/
+.venv-s2/
+__pycache__/
+*.pyc
+
+# Cache
+.cache/
+.cache-omnivoice/
+.huggingface/
+
+# Big binaries/models (7GB+ — jangan commit)
+whisper/ggml-*
+whisper/models/
+*.bin
+
+# Secrets — JANGAN pernah commit .env (berisi GEMINI_API_KEY dll)
+.env
+.env.*
+
+# Outputs video (GB-an)
+data/output/
+data/input/*.mp4
+*.mp4
+*.wav
+*.mp3
+*.log
+*.tmp
+
+# Temp output run
+data/output_regeneration*.log
+output_regeneration*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+# Binari whisper + junk
+whisper/Release/*.dll
+whisper/Release/*.exe
+work/
+*.excalidraw
+*.pid
+
+
+*.zip
