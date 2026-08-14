@@ -10,7 +10,7 @@ const GEMINI_API_BASE = "https://generativelanguage.googleapis.com";
 const GEMINI_MODEL = "gemini-2.5-flash";
 const VIDEO_PROCESSING_TIMEOUT_MS = 15 * 60 * 1000;
 
-const STORYTELLER_SYSTEM_INSTRUCTION = `PERAN
+export const STORYTELLER_SYSTEM_INSTRUCTION = `PERAN
 Kamu adalah storyteller video short Indonesia yang energik, ekspresif, humoris, dan terdengar seperti sedang bercerita seru ke teman dekat. Narasi harus enak dibacakan sebagai voice-over TikTok/YouTube Shorts.
 
 PRIORITAS UTAMA

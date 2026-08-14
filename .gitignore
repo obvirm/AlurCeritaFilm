@@ -15,6 +15,7 @@ __pycache__/
 whisper/ggml-*
 whisper/models/
 *.bin
+models/
 
 # Secrets — JANGAN pernah commit .env (berisi GEMINI_API_KEY dll)
 .env
@@ -22,6 +23,7 @@ whisper/models/
 
 # Outputs video (GB-an)
 data/output/
+data/uploads/
 data/input/*.mp4
 *.mp4
 *.wav

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie2Short Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">Movie2Short</span>
+    <span class="brand-sub">STUDIO</span>
+  </div>
+  <div class="topbar-status" id="server-status"><span class="dot"></span> Menghubungkan…</div>
+</header>
+
+<main class="layout">
+
+  <!-- KIRI: input -->
+  <section class="col col-input">
+    <div class="section">
+      <h2 class="section-title">Video</h2>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="video-input" accept="video/*" hidden>
+        <div class="dz-inner" id="dz-inner">
+          <p class="dz-title">Letakkan video di sini</p>
+          <p class="dz-hint">atau klik untuk memilih file</p>
+        </div>
+        <div class="dz-file hidden" id="dz-file">
+          <div class="dz-file-name" id="dz-file-name"></div>
+          <div class="dz-file-meta" id="dz-file-meta"></div>
+          <button class="dz-remove" id="dz-remove" title="Ganti video">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Pengaturan</h2>
+      <label class="field">
+        <span class="field-label">Model analisis</span>
+        <select id="model">
+          <option value="gemini/gemini-3.6-flash">Gemini 3.6 Flash (cloud)</option>
+          <option value="llava:7b">Llava 7b (lokal)</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Stretch — <output id="stretch-val">0.00</output></span>
+        <input type="range" id="stretch" min="0" max="1" step="0.05" value="0">
+      </label>
+      <label class="field">
+        <span class="field-label">H-Zoom — <output id="hzoom-val">1.00</output></span>
+        <input type="range" id="hzoom" min="1" max="1.6" step="0.01" value="1">
+      </label>
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" id="camera-plan">
+          <span>Camera plan (director)</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="caption" checked>
+          <span>Caption (tscaps)</span>
+        </label>
+      </div>
+      <label class="field">
+        <span class="field-label">Template caption</span>
+        <select id="template">
+          <option value="loki">Loki (default)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="section">
+      <button class="btn-run" id="btn-run" disabled>
+        <span id="btn-run-text">Mulai Generate</span>
+      </button>
+      <p class="hint-small">Analisis → TTS → render → caption. Log tampil di bawah.</p>
+    </div>
+  </section>
+
+  <!-- TENGAH: preview -->
+  <section class="col col-preview">
+    <div class="preview-box">
+      <div class="preview-head">
+        <span>Input</span>
+      </div>
+      <div class="preview-stage" id="preview-input">
+        <p class="preview-empty">Belum ada video</p>
+        <video id="video-input-preview" controls playsinline hidden></video>
+      </div>
+    </div>
+
+    <div class="preview-box">
+      <div class="preview-head">
+        <span>Output</span>
+        <div class="result-actions" id="result-actions"></div>
+      </div>
+      <div class="preview-stage" id="preview-output">
+        <p class="preview-empty">Belum ada hasil</p>
+        <video id="result-video" controls playsinline hidden></video>
+      </div>
+    </div>
+  </section>
+
+  <!-- KANAN: gallery template -->
+  <section class="col col-gallery">
+    <div class="section">
+      <h2 class="section-title">Template tscaps</h2>
+      <p class="gallery-hint">Pilih gaya caption. Template dipakai saat proses caption.</p>
+      <div class="gallery" id="gallery"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- BAWAH: log full width -->
+<section class="logbar">
+  <div class="console-head">
+    <span>Log</span>
+    <button class="console-clear" id="btn-clear-log">bersihkan</button>
+  </div>
+  <div class="console" id="console"></div>
+</section>
+
+<footer class="footer">Movie2Short Studio — Gemini / llava / OmniVoice / FFmpeg / tscaps</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

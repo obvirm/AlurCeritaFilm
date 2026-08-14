@@ -13,7 +13,7 @@ export interface VlmResponse {
   scenes: SceneOutput[];
 }
 
-function parseVlmJson(raw: string): VlmResponse {
+export function parseVlmJson(raw: string): VlmResponse {
   try { return JSON.parse(raw) as VlmResponse; } catch {}
 
   const codeBlockMatch = raw.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);

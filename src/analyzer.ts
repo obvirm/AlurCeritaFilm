@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import { extractFramesToMemory } from "./stage1/frameExtractor.js";
 import { analyzeChunkWithOllama, SceneOutput } from "./stage1/vlm.js";
+import { analyzeChunkWithR9Video } from "./stage1/vlm_r9.js";
 import { analyzeVideoChunkWithGemini, deleteVideoFromGemini, uploadVideoToGemini } from "./stage1/vlm_gemini.js";
 import { extractAudio } from "./stage1/audioExtractor.js";
 import { transcribeAudio } from "./stage1/whisper.js";
@@ -17,7 +18,8 @@ export interface PipelineOptions {
 export async function runAnalysisPipeline(options: PipelineOptions) {
   const { videoPath, outputDir, ollamaModel = "gemini/gemini-3.6-flash" } = options;
   const isGemini = ollamaModel.startsWith("gemini/");
-  const actualModel = isGemini ? ollamaModel.replace("gemini/", "") : ollamaModel;
+  const isR9 = ollamaModel.startsWith("r9/");
+  const actualModel = isGemini ? ollamaModel.replace("gemini/", "") : isR9 ? ollamaModel.replace("r9/", "") : ollamaModel;
 
   console.log("[1/5] Ensuring output directories...");
   await fs.mkdir(outputDir, { recursive: true });
@@ -44,8 +46,9 @@ export async function runAnalysisPipeline(options: PipelineOptions) {
   const transcriptTextPath = path.join(outputDir, "transcript.txt");
   const transcriptSegmentsPath = path.join(outputDir, "transcript_timestamps.json");
 
-  if (isGemini) {
-    console.log("       Gemini akan membaca audio langsung dari MP4; Whisper dilewati.");
+  if (isGemini || isR9) {
+    // Gemini & R9 (ag/gemini-*) membaca audio langsung dari MP4 — Whisper dilewati.
+    console.log("       " + (isGemini ? "Gemini" : "R9 (ag/gemini)") + " akan membaca audio langsung dari MP4; Whisper dilewati.");
   } else {
     try {
       transcript = (await fs.readFile(transcriptTextPath, "utf8")).trim();
@@ -67,7 +70,9 @@ export async function runAnalysisPipeline(options: PipelineOptions) {
 
   console.log("[4/5] VLM analysis...");
   const allScenes: SceneOutput[] = [];
-  const chunkDuration = 40;
+  // M2S_CHUNK_DURATION: 0 = satu request penuh (tanpa chunk), default 40 detik.
+  const chunkDurationRaw = Number(process.env.M2S_CHUNK_DURATION || "40");
+  const chunkDuration = chunkDurationRaw > 0 ? chunkDurationRaw : totalDuration;
   let previousNarration = "";
 
   let transcriptSegments: Array<{ start: number; end: number; text: string }> = [];
@@ -103,6 +108,9 @@ export async function runAnalysisPipeline(options: PipelineOptions) {
           undefined,
           previousNarration
         );
+      } else if (isR9) {
+        // R9 = kirim MP4 LANGSUNG (potong per chunk -c copy, kualitas asli, tanpa filter)
+        r = await analyzeChunkWithR9Video(videoPath, cs, ce, actualModel, chunkTranscript, previousNarration);
       } else {
         const frames = await extractFramesToMemory(videoPath, 2, 0, cs, ce); // semua frame, resolusi penuh
         if (frames.length === 0) continue;
