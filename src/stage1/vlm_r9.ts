@@ -59,12 +59,12 @@ Tugas:
 1. Pilih 1-3 momen paling penting yang BENAR-BENAR terjadi di klip ini (lihat gerakan, aksi, dialog, konflik).
 2. Setiap scene durasi 3-8 detik.
 3. description harus menyebut aksi visual konkret yang terlihat di video.
-4. narration_text harus naskah voice-over Bahasa Indonesia kasual sesuai persona.
+4. narration_text harus naskah voice-over Bahasa Indonesia baku, sinematik, dan mengalir sesuai persona THE SEAMLESS NARRATOR.
 5. start_sec dan end_sec adalah detik GLOBAL dari awal video penuh (bukan offset klip) — hitung dari penanda waktu klip + ${chunkStartSec}.
 ${previousContextBlock}${transcriptContext}
 
 Balas JSON SAJA (format contoh — JANGAN tiru teksnya):
-{"scenes":[{"start_sec":1,"end_sec":3,"description":"aksi visual konkret","narration_text":"narasi kasual"}]}`;
+{"scenes":[{"start_sec":1,"end_sec":3,"description":"aksi visual konkret","narration_text":"narasi baku yang menyatu dengan alur cerita"}]}`;
 
     const response = await fetch(`${R9_BASE_URL}/chat/completions`, {
       method: "POST",
