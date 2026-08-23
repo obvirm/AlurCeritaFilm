@@ -9,7 +9,7 @@
  *
  * Endpoints:
  *   POST /api/upload?name=<file.mp4>   raw body -> data/uploads/<name>
- *   POST /api/run                      { videoPath, model, stretch, hzoom, cameraPlan, caption } -> { jobId }
+   *   POST /api/run                      { videoPath, model, stretch, hzoom, caption } -> { jobId }
  *   GET  /api/jobs/:id                 status + artifacts job
  *   GET  /api/outputs                  daftar job terakhir
  *   WS   /ws?job=<jobId>               stream log live
@@ -208,7 +208,7 @@ function runNode(job, label, script, args, opts = {}) {
 // Pipeline
 // ---------------------------------------------------------------------------
 async function runPipeline(job, input) {
-  const { videoPath, model, stretch, hzoom, cameraPlan, caption, lead, tail, outputMode = "one", parts = 0 } = input;
+  const { videoPath, model, stretch, hzoom, caption, lead, tail, outputMode = "one", parts = 0 } = input;
   const chunkEnabled = input.chunk === undefined
     ? true
     : typeof input.chunk === "boolean" ? input.chunk : Number(input.chunk) > 0;
@@ -218,7 +218,7 @@ async function runPipeline(job, input) {
   pushLog(job, `Video  : ${videoPath}`);
   pushLog(job, `Model  : ${model}`);
   const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ~90s/part)` : "One Short";
-  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | CameraPlan: ${cameraPlan ? "ON" : "OFF"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
+  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
 
   // 1. ANALYSIS -------------------------------------------------------------
   pushStatus(job, "running", "analysis");
@@ -249,22 +249,6 @@ async function runPipeline(job, input) {
     throw new Error(`manifest.json tidak valid: ${e instanceof Error ? e.message : String(e)}`);
   }
   pushLog(job, "[analysis] selesai -> manifest.json");
-
-  // 2. CAMERA PLAN (opsional, pakai llava lokal) -----------------------------
-  let cameraPlanPath;
-  if (cameraPlan) {
-    pushStatus(job, "running", "camera-plan");
-    cameraPlanPath = path.join(job.dir, "camera_plan.json");
-    try {
-      await runNode(job, "CAMERA PLAN", "tools/director_positions.ts", [
-        manifestPath, cameraPlanPath,
-      ], { env: { DIRECTOR_VIDEO: videoPath } });
-      pushLog(job, "[camera-plan] selesai");
-    } catch (e) {
-      pushLog(job, `[camera-plan] gagal, lanjut tanpa camera plan: ${e.message}`, "warn");
-      cameraPlanPath = undefined;
-    }
-  }
 
   // 2.5 SPLIT (opsional) --------------------------------------------------------
   // Analisis Gemini hanya SEKALI; manifest dibagi menjadi N part scene
@@ -325,7 +309,6 @@ async function runPipeline(job, input) {
       "--scene-durations", narrationJson,
       "--out", finalShort,
     ];
-    if (cameraPlanPath) renderArgs.push("--camera-plan", cameraPlanPath);
     if (stretch !== undefined && stretch !== null) renderArgs.push("--stretch", String(stretch));
     if (hzoom !== undefined && hzoom !== null) renderArgs.push("--hzoom", String(hzoom));
     await runNode(job, `${partTag}RENDER FFMPEG`, "src/index.ts", renderArgs);
@@ -460,7 +443,6 @@ const server = http.createServer(async (req, res) => {
         : true, // true = 40s chunks; false = full video
       stretch: input.stretch !== undefined ? Number(input.stretch) : undefined,
       hzoom: input.hzoom !== undefined ? Number(input.hzoom) : undefined,
-      cameraPlan: !!input.cameraPlan,
       caption: input.caption !== false,
       template: typeof input.template === "string" ? input.template : "loki",
       lead: input.lead !== undefined ? Number(input.lead) : 5,

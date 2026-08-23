@@ -10,6 +10,8 @@ export interface SceneOutput {
   end_sec: number;
   description: string;
   narration_text: string;
+  /** Posisi horizontal pusat karakter utama, 0-100 (0=tepi kiri, 100=tepi kanan). */
+  subject_x_pct?: number;
 }
 
 export interface VlmResponse {
@@ -94,9 +96,10 @@ Tugas:
 3. description harus menyebut aksi visual konkret yang terlihat di video.
 4. narration_text harus menjadi naskah voice-over final sesuai persona system instruction.
 5. start_sec dan end_sec adalah detik GLOBAL dari awal video penuh (bukan offset klip) - hitung dari penanda waktu klip + ${chunkStartSec}.
+6. Untuk SETIAP scene, perkirakan subject_x_pct: posisi horizontal PUSAT karakter/tokoh utama dalam frame, angka 0-100 (0=tepi kiri, 100=tepi kanan, 50=tengah). Ikuti tokoh yang paling menonjol/penting di scene itu. Jika tidak ada tokoh yang jelas, pakai 50.
 ${previousContextBlock}${transcriptContext}
 Balas JSON SAJA (format contoh - JANGAN tiru teksnya):
-{"scenes":[{"start_sec":1,"end_sec":3,"description":"aksi visual konkret","narration_text":"narasi voice-over final"}]}`;
+{"scenes":[{"start_sec":1,"end_sec":3,"description":"aksi visual konkret","narration_text":"narasi voice-over final","subject_x_pct":42}]}`;
 
     const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
       method: "POST",
@@ -126,7 +129,9 @@ Balas JSON SAJA (format contoh - JANGAN tiru teksnya):
       const end = Math.min(chunkEndSec, Math.max(start + 1, Number(s.end_sec) || chunkEndSec));
       const text = String(s.narration_text || "").trim();
       if (!text || text === "Narasi menarik" || text === "Y" || text === "X") continue;
-      scenes.push({ ...s, startSecGlobal: start, endSecGlobal: end });
+      const xRaw = Number((s as any).subject_x_pct);
+      const subjectX = Number.isFinite(xRaw) ? Math.min(100, Math.max(0, xRaw)) : undefined;
+      scenes.push({ ...s, startSecGlobal: start, endSecGlobal: end, subject_x_pct: subjectX });
     }
     return { scenes };
   } finally {

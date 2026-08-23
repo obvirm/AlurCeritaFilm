@@ -112,6 +112,7 @@ export async function renderShortVideo(
       : startSec;
     const visualInputDuration = Math.min(sourceDuration, duration);
     // Director: posisi overlay per scene (HANYA mode zoom — mode stretch tidak geser).
+    // Prioritas: camera plan manual > subject_x_pct dari VLM > tengah.
     let overlayX = "(W-w)/2";
     const overlayY = "(H-h)/2";
     if (cameraPlan && !useStretch) {
@@ -127,6 +128,18 @@ export async function renderShortVideo(
           : 0;
       if (shift !== 0) overlayX = `(W-w)/2+(${shift})`;
       console.log(`       ${scene.id}: director=${pos} shift=${shift} (max=${cameraPanMax})`);
+    } else if (!useStretch && typeof scene.subject_x_pct === 'number' && Number.isFinite(scene.subject_x_pct)) {
+      // Continuous director: map VLM's subject x-position (0-100%) onto the
+      // available pan range. Subject at frame edge -> shift to that edge of
+      // the zoom crop so it moves toward center; small offsets stay centered
+      // (dead zone) so adjacent scenes never jitter left-right-left.
+      const dx = Math.min(100, Math.max(0, scene.subject_x_pct)) - 50;
+      const deadZonePct = 5;
+      const shift = Math.abs(dx) < deadZonePct ? 0 : -Math.round((dx / 50) * cameraPanMax);
+      if (shift !== 0) {
+        overlayX = `(W-w)/2+(${shift})`;
+        console.log(`       ${scene.id}: subject_x=${scene.subject_x_pct}% shift=${shift} (max=${cameraPanMax})`);
+      }
     }
 
     const sceneFilterComplex = (extraVisualDuration > 0.01
