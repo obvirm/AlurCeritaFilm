@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-export type AppDialogSize = 'sm' | 'md' | 'lg';
+export type AppDialogSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface AppDialogProps {
   open: boolean;
@@ -50,6 +50,7 @@ const SIZE_CLASS: Record<AppDialogSize, string> = {
   sm: 'max-w-[360px]',
   md: 'max-w-[440px]',
   lg: 'max-w-[560px]',
+  xl: 'max-w-[760px]',
 };
 
 const TITLE = 'text-md font-semibold tracking-[-0.022em] text-fg-primary m-0';

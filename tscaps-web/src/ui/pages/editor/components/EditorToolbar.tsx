@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
 import { Undo2, Redo2, ArrowLeft } from 'lucide-react';
+import type { ProjectPartRef } from '@core/projects/domain/ProjectRepository';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { ThemeToggle } from '@ui/_shared/components/ThemeToggle/ThemeToggle';
 import { StatusPill } from '@ui/_shared/components/StatusPill/StatusPill';
@@ -23,6 +24,10 @@ interface EditorToolbarProps {
   saveStatus: SaveButtonStatus;
   canSave: boolean;
   onSave: () => void;
+  /** Multi-part draft navigation (kosong = single short). */
+  parts: ReadonlyArray<ProjectPartRef>;
+  activePartIndex: number;
+  onSelectPart: (index: number) => void;
 }
 
 const ICON_BTN =
@@ -62,6 +67,9 @@ export const EditorToolbar = memo(function EditorToolbar({
   saveStatus,
   canSave,
   onSave,
+  parts,
+  activePartIndex,
+  onSelectPart,
 }: EditorToolbarProps) {
   const uploading = false;
   const { store } = useEditor();
@@ -105,6 +113,26 @@ export const EditorToolbar = memo(function EditorToolbar({
           </button>
         </Tooltip>
       </div>
+
+      {parts.length > 1 && onSelectPart && (
+        <div className="flex items-center rounded-xs border border-edge-medium overflow-hidden shrink-0">
+          {parts.map((part) => (
+            <button
+              key={part.index}
+              type="button"
+              className={
+                part.index === activePartIndex
+                  ? 'px-2.5 py-1 text-xs font-medium bg-surface-3 text-accent cursor-pointer transition-colors duration-quick ease-standard'
+                  : 'px-2.5 py-1 text-xs font-medium bg-transparent text-fg-secondary cursor-pointer transition-colors duration-quick ease-standard hover:bg-surface-2 hover:text-fg-primary'
+              }
+              onClick={() => onSelectPart(part.index)}
+              aria-pressed={part.index === activePartIndex}
+            >
+              {part.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1" />
 

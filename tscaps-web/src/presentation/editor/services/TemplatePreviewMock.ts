@@ -37,6 +37,20 @@ export class TemplatePreviewMock {
     return this.tagDocument(words);
   }
 
+  /**
+   * Builds a tagged segment/line frame from the given words, staggered
+   * one `wordDuration` apart. Used by static previews that need to show
+   * multi-word copy (e.g. a caption example) instead of the single
+   * template-name word — so the preview wraps words like the real
+   * render instead of overflowing one unbroken line.
+   */
+  buildFrameForWords(wordTexts: ReadonlyArray<string>): { segment: Segment; line: Line } {
+    const words = wordTexts.map((text, index) => this.buildWord(text, index));
+    const tagged = this.tagDocument(words);
+    const segment = tagged.sections[0]!.segments[0]!;
+    return { segment, line: segment.lines[0]! };
+  }
+
   private buildSingleWordFrame(): PreviewFrame {
     const word = this.buildWord(TemplatePreviewMock.SINGLE_WORD_TEXT, 0);
     const tagged = this.tagDocument([word]);

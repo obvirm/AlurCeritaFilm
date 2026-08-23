@@ -77,6 +77,7 @@ export class LoadProjectAction {
     const blob = await this.repository.loadVideoBlob(projectId);
     this.commitProject(project, blob, substituted.length > 0);
     await this.restorePreviewIfAny(projectId);
+    await this.restorePartsIfAny(projectId);
 
     this.refresh.execute();
 
@@ -107,6 +108,22 @@ export class LoadProjectAction {
     } catch (error) {
       console.warn('[projects] gagal me-restore preview video short:', error);
     }
+  }
+
+  /**
+   * Mengembalikan referensi multi-part agar toolbar bisa menampilkan
+   * navigasi part setelah page reload.
+   */
+  private async restorePartsIfAny(projectId: string): Promise<void> {
+    let parts = [];
+    try {
+      parts = await this.repository.loadParts(projectId);
+    } catch (error) {
+      console.warn('[projects] gagal membaca referensi part:', error);
+      return;
+    }
+    if (parts.length === 0) return;
+    this.editorStore.patch({ parts, activePartIndex: 0 });
   }
 
   private enterLoadingState(): void {

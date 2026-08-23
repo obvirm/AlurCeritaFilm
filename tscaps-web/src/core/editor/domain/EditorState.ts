@@ -1,5 +1,6 @@
 import type { Document } from '@tscaps/engine';
 import type { AppError } from '@core/_shared/domain/AppError';
+import type { ProjectPartRef } from '@core/projects/domain/ProjectRepository';
 import type { Template } from '@core/templates/domain/Template';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { Sheet } from '@core/sheets/domain/Sheet';
@@ -58,6 +59,10 @@ export interface EditorState {
   readonly projectName: string;
   readonly projectCreatedAt: Date | null;
   readonly projectThumbnail: Blob | null;
+  /** Multi-part draft references (kosong = single short). */
+  readonly parts: ReadonlyArray<ProjectPartRef>;
+  /** Draft part yang sedang aktif di editor. */
+  readonly activePartIndex: number;
   /**
    * `true` when the current editor state has edits that have not been
    * persisted. Cleared by a successful save or a fresh load; raised by

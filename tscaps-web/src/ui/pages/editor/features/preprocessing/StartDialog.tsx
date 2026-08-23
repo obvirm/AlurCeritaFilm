@@ -1,5 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { TranscriberOptions } from '@tscaps/engine';
+import type { Template } from '@core/templates/domain/Template';
+import { TemplatePreviewStatic } from '@ui/pages/editor/components/template/TemplatePreviewStatic';
+import { TemplatePreviewArtifactsBuilder } from '@presentation/editor/services/TemplatePreviewArtifactsBuilder';
+import { AlignmentCssBuilder } from '@presentation/editor/services/AlignmentCssBuilder';
+import { Sheet } from '@core/sheets/domain/Sheet';
+import type { AlignmentConfig } from '@tscaps/engine';
+import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
+import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
 import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
@@ -10,6 +18,16 @@ import type { Movie2ShortAction, Movie2ShortOptions } from '@core/preprocessing/
 import type { UpdateTranscribePreferenceAction } from '@core/transcription/actions/UpdateTranscribePreferenceAction';
 import { SelectField, type SelectFieldOption } from '@ui/pages/editor/features/preprocessing/components/SelectField';
 import { AdvancedSection } from '@ui/pages/editor/features/preprocessing/components/AdvancedSection';
+
+// Matches LocalFileTemplateLoader's fallback when a template declares no
+// alignment block (vertical anchor 75% down, horizontally centered).
+const ALIGNMENT_FALLBACK: AlignmentConfig = {
+  verticalAlign: 'top',
+  verticalOffset: 0.75,
+  horizontalAlign: 'center',
+  horizontalOffset: 0.5,
+};
+const alignmentCssBuilder = new AlignmentCssBuilder();
 
 const LANGUAGES: readonly SelectFieldOption[] = [
   { value: 'auto', label: 'Auto-detect' },
@@ -30,6 +48,7 @@ const LANGUAGES: readonly SelectFieldOption[] = [
 
 const MODELS: readonly SelectFieldOption[] = [
   { value: 'gemini/gemini-3.6-flash', label: 'Gemini 3.6 Flash (cloud)' },
+  { value: 'r9/ag/gemini-3.6-flash-high', label: '9Router ag/gemini-3.6-flash-high' },
   { value: 'llava:7b', label: 'Llava 7b (lokal)' },
 ];
 
@@ -47,6 +66,9 @@ interface StartDialogProps {
   readonly preprocessVideo: PreprocessVideoAction;
   readonly updatePreference: UpdateTranscribePreferenceAction;
   readonly onCancel: () => void;
+  /** Input video shown beside the Movie2Short settings as a live visual reference. */
+  readonly videoFile?: File | null;
+  readonly templateDefinitions?: ReadonlyArray<Template>;
   readonly description?: string;
   readonly extraFields?: ReactNode;
   readonly extraNotices?: ReactNode;
@@ -81,6 +103,8 @@ export function StartDialog({
   preprocessVideo,
   updatePreference,
   onCancel,
+  videoFile = null,
+  templateDefinitions = [],
   description,
   extraFields,
   extraNotices,
@@ -100,12 +124,108 @@ export function StartDialog({
   // Movie2Short settings
   const [model, setModel] = useState<string>('gemini/gemini-3.6-flash');
   const [template, setTemplate] = useState<string>('loki');
+  const [outputMode, setOutputMode] = useState<'one' | 'auto' | 'manual'>('one');
+  const [chunk, setChunk] = useState<boolean>(true);
+  const [parts, setParts] = useState<number>(3);
   const [stretch, setStretch] = useState<number>(0);
   const [hzoom, setHzoom] = useState<number>(1);
   const [cameraPlan, setCameraPlan] = useState<boolean>(false);
   const [lead, setLead] = useState<number>(5);
   const [tail, setTail] = useState<number>(5);
   const [restoreJobId, setRestoreJobId] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const engine = useEngine();
+  const rendering = useRendering();
+  const selectedTemplate = useMemo(
+    () => templateDefinitions.find((definition) => definition.metadata.id === template) ?? null,
+    [templateDefinitions, template],
+  );
+  const templatePreviewArtifactsBuilder = useMemo(
+    () => new TemplatePreviewArtifactsBuilder(
+      rendering.typographyCssVarBuilder,
+      rendering.rotationCssVarBuilder,
+      rendering.styleValuesCssVarsBuilder,
+    ),
+    [rendering.typographyCssVarBuilder, rendering.rotationCssVarBuilder, rendering.styleValuesCssVarsBuilder],
+  );
+  const templatePreviewScope = selectedTemplate ? `m2s-preview-${selectedTemplate.metadata.id}` : null;
+  const templatePreviewVars = useMemo(
+    () => selectedTemplate ? templatePreviewArtifactsBuilder.buildWrapperVars(selectedTemplate) : {},
+    [selectedTemplate, templatePreviewArtifactsBuilder],
+  );
+  const templatePreviewCss = useMemo(
+    () => selectedTemplate && templatePreviewScope
+      ? templatePreviewArtifactsBuilder.buildScopedCss(selectedTemplate, templatePreviewScope)
+      : '',
+    [selectedTemplate, templatePreviewScope, templatePreviewArtifactsBuilder],
+  );
+  const templateFilterArtifacts = useMemo(
+    () => selectedTemplate && templatePreviewScope
+      ? templatePreviewArtifactsBuilder.buildFilterArtifacts(selectedTemplate, templatePreviewScope, 1280)
+      : { filterDefsHtml: '', filterUrlVars: {} },
+    [selectedTemplate, templatePreviewScope, templatePreviewArtifactsBuilder],
+  );
+  const templateLetterSplitter = selectedTemplate?.rendering.splitWordsIntoLetters ? engine.wordSplitter : null;
+
+  // Real line splitter of the selected template, so the caption example is
+  // broken into the same number of rows the final render would produce (e.g.
+  // Loki: balanced-pixel-width, max 2 lines). Measures glyph widths against
+  // the 1080x1920 render geometry with the template's CSS vars.
+  const previewLineSplitter = useMemo(() => {
+    if (!selectedTemplate) return null;
+    const sheet = Sheet.fromTemplate(
+      selectedTemplate.metadata.id,
+      selectedTemplate.metadata.name,
+      null,
+      selectedTemplate,
+    );
+    const cssVars = rendering.sheetCssVarsBuilder.build(sheet);
+    return engine.lineSplitters.build(selectedTemplate.lineSplitter, {
+      css: selectedTemplate.getCss(),
+      cssVars,
+      videoWidth: 1080,
+      videoHeight: 1920,
+    });
+  }, [selectedTemplate, rendering, engine]);
+
+  // Anchor position mirrors the runtime overlay (AlignmentCssBuilder): the
+  // caption is placed at the template's vertical/horizontal offset with the
+  // align/justify from verticalAlign/horizontalAlign — not dead center.
+  const captionAlignment = selectedTemplate?.alignment ?? ALIGNMENT_FALLBACK;
+  const captionAnchorStyle = alignmentCssBuilder.buildAnchorStyle(captionAlignment);
+
+  // Caption example scale: the template renders into a 720x1280 virtual
+  // canvas (container-type: size feeds its cqh/cqw units), then the whole
+  // canvas is letterboxed into the preview box so the caption keeps the
+  // exact proportions of the final 1080x1920 render. Words wrap naturally
+  // inside the 720-wide canvas — long copy never becomes one clipped line.
+  const [captionScale, setCaptionScale] = useState(0.3);
+  const captionPreviewRef = useRef<HTMLDivElement>(null);
+  const CAPTION_PADDING = 10;
+  useLayoutEffect(() => {
+    const preview = captionPreviewRef.current;
+    if (!preview) return;
+    const measure = () => {
+      const cw = preview.clientWidth - CAPTION_PADDING * 2;
+      const ch = preview.clientHeight - CAPTION_PADDING * 2;
+      if (cw <= 0 || ch <= 0) return;
+      setCaptionScale(Math.min(cw / 720, ch / 1280));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(preview);
+    return () => ro.disconnect();
+  }, [selectedTemplate, templatePreviewScope]);
+
+  useEffect(() => {
+    if (!videoFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(videoFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [videoFile]);
 
   useEffect(() => {
     if (doneJobs && doneJobs.length > 0 && !doneJobs.some((j) => j.id === restoreJobId)) {
@@ -125,7 +245,10 @@ export function StartDialog({
 
   const handleGenerateShort = () => {
     if (!movie2short) return;
-    const opts: Movie2ShortOptions = { model, template, stretch, hzoom, cameraPlan, lead, tail };
+    const opts: Movie2ShortOptions = {
+      model, template, outputMode, chunk, parts,
+      stretch, hzoom, cameraPlan, lead, tail,
+    };
     void movie2short.execute(opts);
   };
 
@@ -136,7 +259,7 @@ export function StartDialog({
       open={open}
       onClose={onCancel}
       closeOnOutsideClick={false}
-      size="md"
+      size="xl"
       title="Start your video"
       description={description ?? (isM2S ? MOVIE2SHORT_DESCRIPTION : DEFAULT_DESCRIPTION)}
     >
@@ -168,7 +291,8 @@ export function StartDialog({
       )}
 
       {isM2S ? (
-        <div className="space-y-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_240px] gap-3 items-start">
+          <div className="space-y-3 min-w-0">
           <SelectField
             id="m2s-model"
             label="Model analisis"
@@ -183,6 +307,82 @@ export function StartDialog({
             options={templateOptions}
             onChange={setTemplate}
           />
+          <label className="flex items-center gap-2 text-sm text-fg-secondary">
+            <input
+              type="checkbox"
+              checked={chunk}
+              onChange={(e) => setChunk(e.target.checked)}
+              className="accent-accent size-4"
+            />
+            Analisis per chunk 40 detik
+          </label>
+          <p className="m-0 -mt-2 text-xs text-fg-faint">
+            {chunk ? 'Video diproses per bagian 40 detik.' : 'Satu MP4 utuh dikirim untuk analisis.'}
+          </p>
+          <div>
+            <span className="text-sm text-fg-secondary block">Output</span>
+            <div className="flex rounded-xs border border-fg-muted/30 overflow-hidden w-full mt-1">
+              <button
+                type="button"
+                className={`flex-1 px-2 py-1 text-xs font-medium transition-colors ${
+                  outputMode === 'one'
+                    ? 'bg-surface-3 text-accent shadow-inset-edge'
+                    : 'bg-surface-2 text-fg-secondary hover:bg-surface-3 hover:text-fg-primary'
+                }`}
+                onClick={() => setOutputMode('one')}
+              >
+                One Short
+              </button>
+              <button
+                type="button"
+                className={`flex-1 px-2 py-1 text-xs font-medium transition-colors ${
+                  outputMode === 'auto'
+                    ? 'bg-surface-3 text-accent shadow-inset-edge'
+                    : 'bg-surface-2 text-fg-secondary hover:bg-surface-3 hover:text-fg-primary'
+                }`}
+                onClick={() => setOutputMode('auto')}
+              >
+                Auto Split
+              </button>
+              <button
+                type="button"
+                className={`flex-1 px-2 py-1 text-xs font-medium transition-colors ${
+                  outputMode === 'manual'
+                    ? 'bg-surface-3 text-accent shadow-inset-edge'
+                    : 'bg-surface-2 text-fg-secondary hover:bg-surface-3 hover:text-fg-primary'
+                }`}
+                onClick={() => setOutputMode('manual')}
+              >
+                Manual Split
+              </button>
+            </div>
+            {outputMode === 'manual' && (
+              <label className="block mt-2">
+                <span className="text-sm text-fg-secondary">
+                  Jumlah part — {parts}
+                </span>
+                <input
+                  type="range"
+                  min={2}
+                  max={8}
+                  step={1}
+                  value={parts}
+                  onChange={(e) => setParts(Number(e.target.value))}
+                  className="w-full accent-accent mt-1"
+                />
+              </label>
+            )}
+            {outputMode === 'auto' && (
+              <p className="m-0 mt-1.5 text-xs text-fg-faint">
+                Dibagi otomatis ±90 detik per part, sesuai alur cerita.
+              </p>
+            )}
+            {outputMode !== 'one' && (
+              <p className="m-0 mt-1.5 text-xs text-fg-faint">
+                Setiap part jadi draft sendiri yang bisa diedit.
+              </p>
+            )}
+          </div>
           <label className="block">
             <span className="text-sm text-fg-secondary">
               Stretch (lonjong) — {stretch.toFixed(2)}
@@ -307,6 +507,100 @@ export function StartDialog({
               </button>
             </div>
           )}
+          </div>
+
+          <div className="border border-edge-medium bg-black overflow-hidden">
+            <div className="px-2 py-1.5 border-b border-edge-medium text-2xs uppercase tracking-wide text-fg-faint">
+              Visual input
+            </div>
+            <div className="relative aspect-[9/16] overflow-hidden bg-black flex items-center justify-center">
+              {previewUrl ? (
+                <>
+                  <video
+                    key={`${previewUrl}-background`}
+                    src={previewUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-hidden
+                    className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60"
+                  />
+                  <video
+                    key={`${previewUrl}-foreground`}
+                    src={previewUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute left-1/2 top-1/2 max-w-none object-fill"
+                    style={{
+                      width: '100%',
+                      height: `${31.67 + stretch * 68.33}%`,
+                      transform: `translate(-50%, -50%) scaleX(${hzoom})`,
+                    }}
+                  />
+                  {selectedTemplate && templatePreviewScope && (
+                    <div
+                      ref={captionPreviewRef}
+                      className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${templatePreviewScope}`}
+                      style={{
+                        ...templatePreviewVars,
+                        ...templateFilterArtifacts.filterUrlVars,
+                        containerType: 'size',
+                      } as React.CSSProperties}
+                      aria-label={`Contoh caption template ${template}`}
+                    >
+                      <style>{templatePreviewCss}</style>
+                      {templateFilterArtifacts.filterDefsHtml && (
+                        <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
+                          <defs dangerouslySetInnerHTML={{ __html: templateFilterArtifacts.filterDefsHtml }} />
+                        </svg>
+                      )}
+                      <div
+                        style={{
+                          width: 720,
+                          height: 1280,
+                          containerType: 'size',
+                          flexShrink: 0,
+                          position: 'relative',
+                          transform: `scale(${captionScale})`,
+                          transformOrigin: 'center',
+                        }}
+                      >
+                        {/* Zero-size grid anchor, same recipe as the runtime
+                            overlay: positions the caption per the template's
+                            alignment. max-content + the global `.line` nowrap
+                            keep each pre-split line on one row. */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            display: 'grid',
+                            gridTemplate: '0 / 0',
+                            ...captionAnchorStyle,
+                          } as React.CSSProperties}
+                        >
+                          <div style={{ width: 'max-content' }}>
+                            <TemplatePreviewStatic
+                              template={selectedTemplate}
+                              letterSplitter={templateLetterSplitter}
+                              lineSplitter={previewLineSplitter}
+                              text="SPONGEBOB MENEMUKAN DUNIA YANG ANEH"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="px-3 text-center text-xs text-fg-faint">Video input belum tersedia</span>
+              )}
+            </div>
+            <div className="px-2 py-1.5 border-t border-edge-medium text-2xs text-fg-faint">
+              Stretch {stretch.toFixed(2)} · H-Zoom {hzoom.toFixed(2)}
+            </div>
+          </div>
         </div>
       ) : (
         <>

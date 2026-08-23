@@ -19,7 +19,10 @@ export async function renderShortVideo(
   outputMp4Path: string,
   videoPath: string,
   narrationAudioPath?: string,
-  sceneDurationsPath?: string
+  sceneDurationsPath?: string,
+  cameraPlanPath?: string,
+  stretchRatio?: number,
+  hZoomRatio?: number
 ) {
   const absManifest = path.resolve(manifestPath);
   const absOutput = path.resolve(outputMp4Path);
@@ -29,10 +32,15 @@ export async function renderShortVideo(
     ? JSON.parse(await fs.readFile(path.resolve(sceneDurationsPath), 'utf8'))
     : undefined;
   const sceneDurations = sceneDurationsData?.sceneDurationsSec as number[] | undefined;
+  const cameraPlanData = cameraPlanPath
+    ? JSON.parse(await fs.readFile(path.resolve(cameraPlanPath), 'utf8'))
+    : undefined;
+  const cameraPlan: { scene: string; position: string }[] | undefined = cameraPlanData?.plan;
 
   console.log(`       Video source: ${actualVideoPath}`);
   if (actualNarrationPath) console.log(`       Narration: ${actualNarrationPath}`);
   if (sceneDurations) console.log(`       Per-scene narration durations: ${sceneDurationsPath}`);
+  if (cameraPlan) console.log(`       Camera plan (director): ${cameraPlanPath} (${cameraPlan.length} scene)`);
 
   // Read manifest
   const manifestData = await fs.readFile(absManifest, 'utf8');
@@ -47,10 +55,27 @@ export async function renderShortVideo(
   const W = 1080;
   const H = 1920;
 
-  // Filter: background blur + center video. Apply a subtle 1.15x center zoom
-  // to the foreground so the lower-right source watermark is outside frame.
+  // Filter: background blur + foreground. Mode LONJONG (stretchRatio 0..1):
+  // fg di-stretch vertikal — 0 = rasio asli (band 1080x608), 1 = penuh
+  // 1080x1920 (karakter memanjang maksimal). Tanpa stretch = zoom 1.15 crop
+  // tengah (perilaku commit, "aman"). Camera plan menggeser posisi overlay.
+  const useStretch = typeof stretchRatio === 'number' && stretchRatio >= 0;
   const foregroundZoom = 1.15;
-  const filterComplex = `[0:v]split=2[bg_src][fg_src];[bg_src]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=50[bga];[bga]eq=brightness=-0.3[bg];[fg_src]scale=${W}:${H}:force_original_aspect_ratio=decrease,scale=iw*${foregroundZoom}:ih*${foregroundZoom}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2:format=auto[outv]`.replace(/\s+/g, '');
+  // Pan must stay inside the horizontal crop created by the foreground zoom.
+  // At 1.15x, the 1080px foreground becomes 1242px wide, so only 81px
+  // of movement is available on either side of the centered position.
+  const foregroundWidth = Math.round(W * foregroundZoom);
+  const cameraPanMax = Math.max(0, Math.floor((foregroundWidth - W) / 2));
+  let filterComplex: string;
+  if (useStretch) {
+    const hZoom = typeof hZoomRatio === 'number' && hZoomRatio > 1 ? hZoomRatio : 1;
+    const fgH = Math.round(608 + (1920 - 608) * Math.min(1, Math.max(0, stretchRatio)));
+    const fgW = Math.round(W * hZoom);
+    filterComplex = `[0:v]split=2[bg_src][fg_src];[bg_src]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=50[bga];[bga]eq=brightness=-0.3[bg];[fg_src]scale=${fgW}:${fgH},crop=${W}:${fgH}[fg];[bg][fg]overlay=0:${Math.round((H - fgH) / 2)}:format=auto[outv]`.replace(/\s+/g, '');
+    console.log(`       Stretch (lonjong) mode: ratio=${stretchRatio} hZoom=${hZoom} -> fg ${fgW}x${fgH}`);
+  } else {
+    filterComplex = `[0:v]split=2[bg_src][fg_src];[bg_src]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=50[bga];[bga]eq=brightness=-0.3[bg];[fg_src]scale=${W}:${H}:force_original_aspect_ratio=decrease,scale=iw*${foregroundZoom}:ih*${foregroundZoom}[fg];[bg][fg]overlay=x:y:format=auto[outv]`.replace(/\s+/g, '');
+  }
 
   // Temp directory for scene clips
   const tempDir = path.join(path.dirname(absOutput), '_temp_scenes');
@@ -86,9 +111,28 @@ export async function renderShortVideo(
       ? startSec + (sourceDuration - duration) / 2
       : startSec;
     const visualInputDuration = Math.min(sourceDuration, duration);
-    const sceneFilterComplex = extraVisualDuration > 0.01
+    // Director: posisi overlay per scene (HANYA mode zoom — mode stretch tidak geser).
+    let overlayX = "(W-w)/2";
+    const overlayY = "(H-h)/2";
+    if (cameraPlan && !useStretch) {
+      const entry = cameraPlan.find(p => p.scene === scene.id);
+      const pos = entry?.position;
+      // `left`/`right` select the corresponding edge of the zoom crop.
+      // The clamp is essential: shifting by the portrait canvas width would
+      // expose empty space and make the foreground appear pushed off-screen.
+      const shift = pos === "left"
+        ? cameraPanMax
+        : pos === "right"
+          ? -cameraPanMax
+          : 0;
+      if (shift !== 0) overlayX = `(W-w)/2+(${shift})`;
+      console.log(`       ${scene.id}: director=${pos} shift=${shift} (max=${cameraPanMax})`);
+    }
+
+    const sceneFilterComplex = (extraVisualDuration > 0.01
       ? filterComplex.replace('[outv]', `,tpad=stop_mode=clone:stop_duration=${extraVisualDuration.toFixed(3)}[outv]`)
-      : filterComplex;
+      : filterComplex)
+      .replace('overlay=x:y', `overlay=${overlayX}:${overlayY}`);
     const clipPath = path.join(tempDir, `scene_${String(i).padStart(4, '0')}.mp4`);
 
     const cmd = `ffmpeg -y -ss ${visualStart.toFixed(3)} -t ${visualInputDuration.toFixed(3)} -i "${actualVideoPath}" -filter_complex "${sceneFilterComplex}" -map "[outv]" -an -t ${duration.toFixed(3)} -c:v libx264 -preset fast -crf 23 "${clipPath}"`;

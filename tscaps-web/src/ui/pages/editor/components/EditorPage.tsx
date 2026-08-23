@@ -46,6 +46,7 @@ interface EditorPageProps {
   onOpenExportSettings: () => void;
   onBack: () => void;
   onRenameProject: (name: string) => void;
+  onSelectPart?: (index: number) => void;
   videoOverlay?: ReactNode;
 }
 
@@ -66,6 +67,7 @@ export function EditorPage({
   onOpenExportSettings,
   onBack,
   onRenameProject,
+  onSelectPart,
   videoOverlay,
 }: EditorPageProps) {
   const editor = useEditor();
@@ -228,6 +230,9 @@ export function EditorPage({
           saveStatus={saveStatus}
           canSave={canSave}
           onSave={onSave}
+          parts={state.parts}
+          activePartIndex={state.activePartIndex}
+          onSelectPart={onSelectPart ?? (() => {})}
         />
         {isMobile ? (
           <MobileEditorLayout

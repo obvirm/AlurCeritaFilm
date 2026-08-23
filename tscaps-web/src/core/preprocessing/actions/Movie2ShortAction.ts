@@ -5,7 +5,7 @@ import type { ApplyHookSheetAction } from '@core/preprocessing/actions/ApplyHook
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { CreateProjectAction } from '@core/projects/actions/CreateProjectAction';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
-import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';
+import type { ProjectPartRef, ProjectRepository } from '@core/projects/domain/ProjectRepository';
 import { ProjectSaveFailedError } from '@core/projects/domain/errors/ProjectSaveFailedError';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { AppError } from '@core/_shared/domain/AppError';
@@ -17,6 +17,12 @@ import { parseSrtToDocument } from '@core/preprocessing/services/SrtDocumentBuil
 export interface Movie2ShortOptions {
   readonly model: string;
   readonly template: string;
+  /** one = satu short; auto = split otomatis ±90s/part; manual = user pilih jumlah part. */
+  readonly outputMode: 'one' | 'auto' | 'manual';
+  /** true = analisis per chunk 40 detik; false = satu video utuh. */
+  readonly chunk: boolean;
+  /** Jumlah part (dipakai saat outputMode = 'manual'). */
+  readonly parts: number;
   readonly stretch: number;
   readonly hzoom: number;
   readonly cameraPlan: boolean;
@@ -84,13 +90,15 @@ export class Movie2ShortAction {
       const srtText = await this.fetchCaptionSrt(jobId, artifacts, options.template);
       this.progress.setInferringProgress(0.96, 'Membuat dokumen caption…');
 
+      const parts = this.collectParts(jobId, artifacts);
       const document = parseSrtToDocument(srtText);
-      this.store.patch({ document });
+      this.store.patch({ document, parts, activePartIndex: 0 });
       await this.runTaggers.execute();
       this.applyHookSheet.execute();
       this.applyMultipleSpeakers.execute(false);
       this.refresh.execute();
       await this.persistResult();
+      await this.persistParts(parts);
       await this.attachShortVideo(jobId, artifacts);
 
       this.progress.markComplete();
@@ -190,6 +198,9 @@ export class Movie2ShortAction {
       body: JSON.stringify({
         videoPath,
         model: options.model,
+        outputMode: options.outputMode,
+        chunk: options.chunk,
+        parts: options.parts,
         stretch: options.stretch,
         hzoom: options.hzoom,
         cameraPlan: options.cameraPlan,
@@ -251,7 +262,8 @@ export class Movie2ShortAction {
    * mengambil ulang `final_short.mp4` dari backend dan preview tetap short.
    */
   private async attachShortVideo(jobId: string, artifacts: PipelineJobArtifact[]): Promise<void> {
-    const name = artifacts.find((a) => a.name === 'final_short.mp4')?.name;
+    // Part-01 lebih dulu di artifacts; cocok juga untuk mode one (root).
+    const name = artifacts.find((a) => a.name === 'final_short.mp4' || a.name.endsWith('/final_short.mp4'))?.name;
     if (!name) return;
     try {
       const res = await fetch(`${this.backendBaseUrl}/files/${jobId}/${encodeURIComponent(name)}`);
@@ -320,6 +332,88 @@ export class Movie2ShortAction {
     const res = await fetch(`${this.backendBaseUrl}/files/${jobId}/${encodeURIComponent(name)}`);
     if (!res.ok) throw new Error(`Gagal mengambil SRT caption (HTTP ${res.status})`);
     return res.text();
+  }
+
+  /**
+   * Mengelompokkan artifacts per part (`part-XX/...`). Mode one short
+   * menghasilkan daftar kosong → perilaku lama (tanpa navigasi part).
+   */
+  private collectParts(jobId: string, artifacts: PipelineJobArtifact[]): ProjectPartRef[] {
+    const prefixRe = /^(part-\d+)\/(.+)$/;
+    const byPrefix = new Map<string, { video: string | null; srt: string | null }>();
+    for (const a of artifacts) {
+      const m = prefixRe.exec(a.name);
+      if (!m) continue;
+      const entry = byPrefix.get(m[1]!) ?? { video: null, srt: null };
+      if (m[2]!.endsWith('.srt')) entry.srt = a.name;
+      if (m[2]!.endsWith('/final_short.mp4') || m[2] === 'final_short.mp4') entry.video = a.name;
+      byPrefix.set(m[1]!, entry);
+    }
+    return [...byPrefix.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([prefix, entry], index) => ({
+        index,
+        label: `Part ${index + 1}`,
+        jobId,
+        videoArtifact: entry.video ?? '',
+        srtArtifact: entry.srt ?? '',
+        duration: 0,
+      }));
+  }
+
+  private async persistParts(parts: ProjectPartRef[]): Promise<void> {
+    const projectId = this.store.snapshot().projectId;
+    if (!projectId || parts.length === 0 || !this.canPersist()) return;
+    try {
+      await this.projectRepository.saveParts(projectId, parts);
+    } catch (error) {
+      console.warn('[movie2short] gagal menyimpan referensi part:', error);
+    }
+  }
+
+  /**
+   * Menukar draft aktif ke part lain: memuat SRT part tsb sebagai
+   * dokumen caption + video preview part tsb, lalu menyimpan project.
+   */
+  async activatePart(index: number): Promise<void> {
+    const state = this.store.snapshot();
+    const part = state.parts[index];
+    if (!part || part.index === state.activePartIndex) return;
+    if (!part.srtArtifact || !part.videoArtifact) return;
+    const jobId = part.jobId;
+    if (!jobId) return;
+
+    this.store.patch({ status: 'preprocessing', error: null });
+    await this.yieldOnePaint();
+    try {
+      const srtRes = await fetch(`${this.backendBaseUrl}/files/${jobId}/${encodeURIComponent(part.srtArtifact)}`);
+      if (!srtRes.ok) throw new Error(`Gagal mengambil SRT part (HTTP ${srtRes.status})`);
+      const document = parseSrtToDocument(await srtRes.text());
+      this.store.patch({ document });
+      await this.runTaggers.execute();
+      this.applyHookSheet.execute();
+      this.applyMultipleSpeakers.execute(false);
+      this.refresh.execute();
+
+      const videoRes = await fetch(`${this.backendBaseUrl}/files/${jobId}/${encodeURIComponent(part.videoArtifact)}`);
+      if (videoRes.ok) {
+        const blob = await videoRes.blob();
+        const url = URL.createObjectURL(blob);
+        const { video } = this.store.snapshot();
+        if (video.url && video.url.startsWith('blob:')) URL.revokeObjectURL(video.url);
+        const duration = await this.probeVideoDuration(url);
+        this.store.patch({
+          video: { ...video, url, duration: duration || video.duration },
+          activePartIndex: index,
+        });
+      } else {
+        this.store.patch({ activePartIndex: index });
+      }
+      await this.persistResult();
+    } catch (err) {
+      console.error('[movie2short] gagal pindah part', err);
+      this.store.patch({ status: 'idle', error: this.errorClassifier.wrap(err) });
+    }
   }
 
   private async persistResult(): Promise<void> {

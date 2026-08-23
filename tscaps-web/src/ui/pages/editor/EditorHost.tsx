@@ -35,6 +35,7 @@ import { TemplatePreviewArtifactsBuilder } from '@presentation/editor/services/T
 import { MainVideoStreamProvider } from '@ui/_shared/contexts/MainVideoStreamContext';
 import { PlaybackProvider } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
+import { usePreprocessing } from '@ui/_shared/contexts/modules/PreprocessingContext';
 import { useTemplates } from '@ui/_shared/contexts/modules/TemplatesContext';
 import { useExport } from '@ui/_shared/contexts/modules/ExportContext';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
@@ -128,6 +129,7 @@ export function EditorHost({
   const sheets = useSheets();
   const projects = useProjects();
   const templates = useTemplates();
+  const preprocessing = usePreprocessing();
   const exports = useExport();
   const exportFeedback = useExportFeedback();
   const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder } = useRendering();
@@ -272,6 +274,12 @@ export function EditorHost({
   }, [cutsPlaybackSkipController]);
 
   const dismissToast = useCallback(() => exportFeedback.dismissToast(), [exportFeedback]);
+  const selectPart = useCallback(
+    (index: number) => {
+      void preprocessing.actions.movie2short.activatePart(index);
+    },
+    [preprocessing],
+  );
   const renameProject = useCallback(
     (name: string) => projects.actions.rename.execute(name),
     [projects],
@@ -358,6 +366,7 @@ export function EditorHost({
               onOpenExportSettings={onOpenExportSettings}
               onBack={requestBack}
               onRenameProject={renameProject}
+              onSelectPart={selectPart}
               videoOverlay={videoOverlay}
             />
             <LeaveWithUnsavedChangesDialog

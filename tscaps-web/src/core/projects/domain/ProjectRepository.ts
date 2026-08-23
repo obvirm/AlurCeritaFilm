@@ -17,6 +17,21 @@ export interface ProjectPreview {
 }
 
 /**
+ * Referensi satu part (draft) dari hasil pipeline multi-part. Video dan
+ * SRT disimpan di backend (`/files/<jobId>/<artifact>`); referensinya
+ * disimpan bersama project agar editor bisa membuka draft part mana pun
+ * setelah page reload.
+ */
+export interface ProjectPartRef {
+  readonly index: number;
+  readonly label: string;
+  readonly jobId: string;
+  readonly videoArtifact: string;
+  readonly srtArtifact: string;
+  readonly duration: number;
+}
+
+/**
  * Resolves a persisted preview reference into a playable object URL.
  * Implementations fetch the backend artifact (`/files/<jobId>/<name>`)
  * and return `null` when the artifact is gone or the backend is down —
@@ -52,4 +67,8 @@ export interface ProjectRepository {
    */
   savePreviewVideo(projectId: string, preview: ProjectPreview | null): Promise<void>;
   loadPreviewVideo(projectId: string): Promise<ProjectPreview | null>;
+
+  /** Persists (or clears) the multi-part draft references for a project. */
+  saveParts(projectId: string, parts: ReadonlyArray<ProjectPartRef>): Promise<void>;
+  loadParts(projectId: string): Promise<ProjectPartRef[]>;
 }

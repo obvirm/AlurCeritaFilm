@@ -1,7 +1,7 @@
 import { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import { Project } from '@core/projects/domain/Project';
 import { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
-import type { ProjectPreview, ProjectRepository } from '@core/projects/domain/ProjectRepository';
+import type { ProjectPartRef, ProjectPreview, ProjectRepository } from '@core/projects/domain/ProjectRepository';
 import { ProjectSerializer, type SerializedProject } from '@core/projects/services/ProjectSerializer';
 import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
 
@@ -23,6 +23,8 @@ interface ProjectsRecord {
   readonly previewJobId: string | null;
   readonly previewArtifactName: string | null;
   readonly previewDuration: number | null;
+  /** Multi-part draft references (JSON). Null/empty = single short. */
+  readonly partsJson: string | null;
 }
 
 /**
@@ -81,6 +83,7 @@ export class IndexedDbProjectRepository implements ProjectRepository {
       previewJobId: existing?.previewJobId ?? null,
       previewArtifactName: existing?.previewArtifactName ?? null,
       previewDuration: existing?.previewDuration ?? null,
+      partsJson: existing?.partsJson ?? null,
     };
     await this.db.writeOne(STORE, record);
   }
@@ -122,6 +125,27 @@ export class IndexedDbProjectRepository implements ProjectRepository {
         }
       : null;
     return preview;
+  }
+
+  async saveParts(projectId: string, parts: ReadonlyArray<ProjectPartRef>): Promise<void> {
+    const record = await this.db.readOne<ProjectsRecord>(STORE, projectId);
+    if (!record) return;
+    const updated: ProjectsRecord = {
+      ...record,
+      partsJson: parts.length > 0 ? JSON.stringify(parts) : null,
+    };
+    await this.db.writeOne(STORE, updated);
+  }
+
+  async loadParts(projectId: string): Promise<ProjectPartRef[]> {
+    const record = await this.db.readOne<ProjectsRecord>(STORE, projectId);
+    if (!record?.partsJson) return [];
+    try {
+      const parsed = JSON.parse(record.partsJson) as ProjectPartRef[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
 
   private recordToMetadata(record: ProjectsRecord): ProjectMetadata {

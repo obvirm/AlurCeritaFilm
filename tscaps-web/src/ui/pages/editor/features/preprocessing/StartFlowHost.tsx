@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { EditorState } from '@core/editor/domain/EditorState';
+import type { Template } from '@core/templates/domain/Template';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useTranscription } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { usePreprocessing } from '@ui/_shared/contexts/modules/PreprocessingContext';
+import { useTemplates } from '@ui/_shared/contexts/modules/TemplatesContext';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
 import { StartDialog } from '@ui/pages/editor/features/preprocessing/StartDialog';
 import { MOVIE2SHORT_BACKEND_URL } from '@bootstrap/wiring/preprocessing';
@@ -133,6 +135,21 @@ function useDoneJobs(): DoneJobOption[] {
   return jobs;
 }
 
+function useTemplateDefinitions(): Template[] {
+  const templatesModule = useTemplates();
+  const [templates, setTemplates] = useState<Template[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void templatesModule.repository.getAll().then((loaded) => {
+      if (!cancelled) setTemplates(loaded);
+    }).catch(() => {
+      if (!cancelled) setTemplates([]);
+    });
+    return () => { cancelled = true; };
+  }, [templatesModule]);
+  return templates;
+}
+
 function useMovie2ShortTemplates(): TemplateOption[] {
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
   useEffect(() => {
@@ -172,6 +189,7 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
   const open = useDialogOpen(preprocessing.flow);
   const state = useEditorSnapshot(editor.store);
   const templates = useMovie2ShortTemplates();
+  const templateDefinitions = useTemplateDefinitions();
   const doneJobs = useDoneJobs();
   const runningJob = useRunningJob();
   const quotaWarning = useQuotaWarning();
@@ -193,8 +211,10 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
       preprocessVideo={preprocessing.actions.preprocessVideo}
       updatePreference={transcription.actions.updatePreference}
       onCancel={handleCancel}
+      videoFile={state.video.file}
       movie2short={preprocessing.actions.movie2short}
       templates={templates}
+      templateDefinitions={templateDefinitions}
       doneJobs={doneJobs}
       runningJob={runningJob.job}
       quotaWarning={quotaWarning}

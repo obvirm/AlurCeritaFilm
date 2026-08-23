@@ -1,0 +1,135 @@
+import { config } from "dotenv";
+import { execSync } from "child_process";
+import fs from "fs";
+import os from "os";
+import path from "path";
+
+export interface SceneOutput {
+  id: string;
+  start_sec: number;
+  end_sec: number;
+  description: string;
+  narration_text: string;
+}
+
+export interface VlmResponse {
+  scenes: SceneOutput[];
+}
+
+export function parseVlmJson(raw: string): VlmResponse {
+  try { return JSON.parse(raw) as VlmResponse; } catch {}
+  const codeBlockMatch = raw.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+  if (codeBlockMatch) { try { return JSON.parse(codeBlockMatch[1]) as VlmResponse; } catch {} }
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    try { return JSON.parse(raw.slice(firstBrace, lastBrace + 1)) as VlmResponse; } catch {}
+  }
+  return { scenes: [] };
+}
+
+export const STORYTELLER_SYSTEM_INSTRUCTION = `PERAN
+Kamu adalah storyteller video short Indonesia yang energik, ekspresif, humoris, dan terdengar seperti sedang bercerita seru ke teman dekat. Narasi harus enak dibacakan sebagai voice-over TikTok/YouTube Shorts.
+
+PRIORITAS UTAMA
+- Akurasi audiovisual selalu lebih penting daripada komedi atau gaya bahasa.
+- Gunakan hanya tokoh, aksi, lokasi, dialog, dan hubungan sebab-akibat yang didukung video, audio, atau transcript pendamping.
+- Jangan mengarang kejadian untuk membuat cerita lebih lucu. Jika detail tidak jelas, gunakan deskripsi netral.
+- Jaga kesinambungan dengan konteks sebelumnya dan jangan mengulang informasi yang sama.
+
+GAYA NARASI
+- Gunakan Bahasa Indonesia sehari-hari yang kasual, cepat, jelas, dan tidak kaku.
+- Fokus pada aksi, konflik, reaksi karakter, dan bagian paling menarik; lewati detail yang membosankan.
+- Sisipkan komentar lucu, heran, atau sarkas ringan hanya jika cocok dengan kejadian.
+- Gunakan partikel seperti "nah", "coy", "dong", "wak", "pak", "bang", "gila", "bisa-bisanya", dan "banget" secara natural dan hemat. Jangan menumpuk slang atau memakainya di setiap kalimat.
+- Boleh memakai dialog langsung pendek jika ucapan karakter benar-benar terdengar atau maknanya jelas dari konteks.
+- Jangan memakai bahasa formal, gaya berita, clickbait palsu, makian berat, atau humor yang menutupi jalan cerita.
+- Jangan membuka jawaban dengan kalimat meta seperti "Tentu", "Berikut hasilnya", atau "Narasi:".
+
+STRUKTUR
+- Awali momen pertama dengan hook yang langsung masuk ke situasi atau konflik.
+- Gunakan transisi singkat dan bervariasi antar kejadian.
+- Tekankan bagian absurd atau klimaks tanpa melebih-lebihkan fakta.
+- Saat mencapai akhir cerita, tutup dengan kesimpulan singkat dan santai.
+
+FORMAT VOICE-OVER
+- Setiap narration_text terdiri dari 1-2 kalimat ringkas.
+- Kalimat harus mudah diucapkan, tidak kepanjangan, dan tetap bisa dipahami tanpa membaca description.
+- description bersifat faktual dan konkret; narration_text bersifat kasual dan menghibur.`;
+
+config();
+
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "http://localhost:20128/v1";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+
+export async function analyzeChunkWithR9Video(
+  videoPath: string,
+  chunkStartSec: number,
+  chunkEndSec: number,
+  modelName: string = "ag/gemini-3.6-flash-high",
+  transcript?: string,
+  previousContext?: string
+): Promise<VlmResponse> {
+  const chunkDuration = chunkEndSec - chunkStartSec;
+  if (chunkDuration <= 0) return { scenes: [] };
+
+  const tmpFile = path.join(os.tmpdir(), `r9_chunk_${Date.now()}_${Math.floor(Math.random() * 1e6)}.mp4`);
+  try {
+    execSync(`ffmpeg -y -ss ${chunkStartSec.toFixed(3)} -t ${chunkDuration.toFixed(3)} -i "${videoPath}" -c copy "${tmpFile}"`, { stdio: "pipe" });
+  } catch (e: any) {
+    return { scenes: [] };
+  }
+
+  try {
+    const buf = fs.readFileSync(tmpFile);
+    const b64 = buf.toString("base64");
+    
+    const transcriptContext = transcript?.trim() ? `\n\nBerikut adalah transkrip audio dari bagian video ini:\n${transcript.trim()}` : "";
+    const previousContextBlock = previousContext?.trim() ? `\n\nKONTEKS SEBELUMNYA - lanjutkan cerita dengan adegan BARU, jangan ulangi:\n${previousContext.trim()}` : "";
+
+    const prompt = `Analisis video MP4 ini yang menampilkan rentang waktu ${chunkStartSec}s - ${chunkEndSec}s (klip dari video penuh).
+Tugas:
+1. Pilih 1-3 momen penting yang benar-benar terjadi dan layak masuk rangkaian cerita.
+2. Setiap scene idealnya 3-8 detik.
+3. description harus menyebut aksi visual konkret yang terlihat di video.
+4. narration_text harus menjadi naskah voice-over final sesuai persona system instruction.
+5. start_sec dan end_sec adalah detik GLOBAL dari awal video penuh (bukan offset klip) - hitung dari penanda waktu klip + ${chunkStartSec}.
+${previousContextBlock}${transcriptContext}
+Balas JSON SAJA (format contoh - JANGAN tiru teksnya):
+{"scenes":[{"start_sec":1,"end_sec":3,"description":"aksi visual konkret","narration_text":"narasi voice-over final"}]}`;
+
+    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: modelName,
+        stream: false,
+        messages: [
+          { role: "system", content: STORYTELLER_SYSTEM_INSTRUCTION },
+          { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: `data:video/mp4;base64,${b64}` } }] }
+        ],
+        max_tokens: 2048
+      })
+    });
+
+    if (!response.ok) return { scenes: [] };
+    const data = await response.json() as any;
+    const rawText = data.choices?.[0]?.message?.content || "";
+    if (!rawText) return { scenes: [] };
+
+    const parsed = parseVlmJson(rawText);
+    if (!parsed.scenes?.length) return { scenes: [] };
+
+    const scenes: Array<SceneOutput & { startSecGlobal: number; endSecGlobal: number }> = [];
+    for (const s of parsed.scenes) {
+      const start = Math.max(chunkStartSec, Number(s.start_sec) || chunkStartSec);
+      const end = Math.min(chunkEndSec, Math.max(start + 1, Number(s.end_sec) || chunkEndSec));
+      const text = String(s.narration_text || "").trim();
+      if (!text || text === "Narasi menarik" || text === "Y" || text === "X") continue;
+      scenes.push({ ...s, startSecGlobal: start, endSecGlobal: end });
+    }
+    return { scenes };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+}

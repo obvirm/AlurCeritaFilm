@@ -3,7 +3,7 @@
  *
  * Vanilla Node HTTP server + WebSocket. Mengontrol pipeline sebagai subprocess:
  *   1. Analysis (Gemini/llava) -> manifest.json
- *   2. TTS OmniVoice natural -> narration wav + json
+ *   2. TTS OmniVoice via audio.cpp (audiocpp_cli, batch GPU) -> narration wav + json
  *   3. Render FFmpeg (narasi master timeline)
  *   4. Caption tscaps (headless, template Loki) -> final_captioned_loki.mp4
  *
@@ -29,7 +29,6 @@ import { WebSocketServer, WebSocket } from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
-const PUBLIC_DIR = path.join(__dirname, "public");
 const UPLOAD_DIR = path.join(ROOT, "data", "uploads");
 const JOBS_DIR = path.join(ROOT, "data", "output", "jobs");
 
@@ -38,18 +37,26 @@ const JOBS_DIR = path.join(ROOT, "data", "output", "jobs");
 // ---------------------------------------------------------------------------
 const CFG = {
   tsxCli: path.join(ROOT, "node_modules", "tsx", "dist", "cli.mjs"),
-  pythonTts: path.join(ROOT, ".venv-omnivoice", "Scripts", "python.exe"),
-  ttsScript: path.join(ROOT, "tools", "omnivoice_manifest_tts_natural.py"),
+  // TTS via audio.cpp (audiocpp_cli.exe — engine C++/ggml, batch mode, GPU).
+  // Orkestrasi Node murni (tools/audiocpp_manifest_tts.mjs) — TANPA Python.
+  ttsScript: path.join(ROOT, "tools", "audiocpp_manifest_tts.mjs"),
+  audiocppExe: process.env.AUDIOCPP_EXE || "D:\\audio-cpp-lowend-gpu\\build\\windows-cuda-release\\bin\\audiocpp_cli.exe",
+  audiocppModelSpecs: process.env.AUDIOCPP_MODEL_SPECS || "D:\\audio-cpp-lowend-gpu\\model_specs",
+  audiocppBackend: process.env.AUDIOCPP_BACKEND || "cuda",
+  audiocppModel: process.env.AUDIOCPP_MODEL || (() => {
+    // Auto-resolve model OmniVoice dari cache HF (snapshot terbaru)
+    const snaps = path.join(ROOT, ".cache", "huggingface", "hub", "models--k2-fsa--OmniVoice", "snapshots");
+    try {
+      const dirs = fs.readdirSync(snaps);
+      if (dirs.length) return path.join(snaps, dirs[0]);
+    } catch { /* fallthrough */ }
+    return "";
+  })(),
   refAudio: path.join(ROOT, "data", "reference", "test_snippet.wav"),
   refText: path.join(ROOT, "data", "reference", "test_snippet.txt"),
   // tscaps (repo terpisah, headless caption via Playwright + Chrome)
   tscapsExamples: process.env.TSCAPS_EXAMPLES_DIR || path.resolve(ROOT, "..", "tscaps", "packages", "engine", "examples"),
-  tscapsChrome: process.env.TSCAPS_CHROME_PATH || "C:\\Users\\X\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
-  ttsEnv: {
-    HF_HOME: "E:\\project\\movie2short\\.cache\\huggingface",
-    HF_HUB_OFFLINE: "1",
-    CUDA_VISIBLE_DEVICES: "",
-  },
+  tscapsChrome: process.env.TSCAPS_CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
 };
 
 await fsp.mkdir(UPLOAD_DIR, { recursive: true });
@@ -201,17 +208,24 @@ function runNode(job, label, script, args, opts = {}) {
 // Pipeline
 // ---------------------------------------------------------------------------
 async function runPipeline(job, input) {
-  const { videoPath, model, stretch, hzoom, cameraPlan, caption, lead, tail } = input;
+  const { videoPath, model, stretch, hzoom, cameraPlan, caption, lead, tail, outputMode = "one", parts = 0 } = input;
+  const chunkEnabled = input.chunk === undefined
+    ? true
+    : typeof input.chunk === "boolean" ? input.chunk : Number(input.chunk) > 0;
+  const chunkDuration = input.chunk === undefined
+    ? 40
+    : typeof input.chunk === "boolean" ? (input.chunk ? 40 : 0) : Number(input.chunk);
   pushLog(job, `Video  : ${videoPath}`);
   pushLog(job, `Model  : ${model}`);
-  pushLog(job, `Chunk  : ${input.chunk !== undefined ? (input.chunk === 0 ? "FULL (tanpa chunk)" : input.chunk + "s") : "40s (default)"} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | CameraPlan: ${cameraPlan ? "ON" : "OFF"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
+  const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ~90s/part)` : "One Short";
+  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | CameraPlan: ${cameraPlan ? "ON" : "OFF"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
 
   // 1. ANALYSIS -------------------------------------------------------------
   pushStatus(job, "running", "analysis");
   const manifestPath = path.join(job.dir, "manifest.json");
   await runNode(job, "ANALYSIS", "server/analyze-only.ts", [
     videoPath, job.dir, model,
-  ], input.chunk !== undefined ? { env: { M2S_CHUNK_DURATION: String(input.chunk) } } : {});
+  ], { env: { M2S_CHUNK_DURATION: String(chunkDuration) } });
   // Cek hasil analysis: manifest.json harus ada & punya scenes
   if (!fs.existsSync(manifestPath)) {
     let detail = "manifest.json tidak dibuat oleh analysis.";
@@ -252,83 +266,114 @@ async function runPipeline(job, input) {
     }
   }
 
-  // 3. TTS OmniVoice natural --------------------------------------------------
-  pushStatus(job, "running", "tts");
-  const narrationWav = path.join(job.dir, "narration_omnivoice_natural.wav");
-  const narrationJson = path.join(job.dir, "narration_omnivoice_natural.json");
-  const ttsArgs = [
-    CFG.ttsScript,
-    "--manifest", manifestPath,
-    "--ref-audio", CFG.refAudio,
-    "--ref-text", CFG.refText,
-    "--output", narrationWav,
-  ];
-  if (lead !== undefined && lead !== null) ttsArgs.push("--lead", String(lead));
-  if (tail !== undefined && tail !== null) ttsArgs.push("--tail", String(tail));
-  ttsArgs.push("--device", "cpu"); // force CPU — VRAM host jenuh; env CUDA_VISIBLE_DEVICES='' di-drop spawn Windows
-  await run(job, "TTS OMNI-VOICE", CFG.pythonTts, ttsArgs, { env: CFG.ttsEnv });
-  pushLog(job, "[tts] selesai -> " + narrationWav);
+  // 2.5 SPLIT (opsional) --------------------------------------------------------
+  // Analisis Gemini hanya SEKALI; manifest dibagi menjadi N part scene
+  // berurutan. One Short = 1 part (job dir), tanpa split.
+  const partDirs = [];
+  if (outputMode !== "one") {
+    pushStatus(job, "running", "split");
+    const partsDir = path.join(job.dir, "parts");
+    await runNode(job, "SPLIT MANIFEST", "tools/split_manifest.ts", [
+      manifestPath, partsDir, String(parts || 0),
+    ]);
+    const entries = await fsp.readdir(partsDir, { withFileTypes: true }).catch(() => []);
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.isDirectory() && /^part-\d+$/.test(e.name)) partDirs.push(path.join(partsDir, e.name));
+    }
+    pushLog(job, `[split] ${partDirs.length} part siap.`);
+  }
+  if (partDirs.length === 0) partDirs.push(job.dir);
 
-  // 4. RENDER FFmpeg (narasi master timeline) --------------------------------
-  pushStatus(job, "running", "render");
-  const finalShort = path.join(job.dir, "final_short.mp4");
-  const renderArgs = [
-    "--only-render", manifestPath,
-    "--video", videoPath,
-    "--audio", narrationWav,
-    "--scene-durations", narrationJson,
-    "--out", finalShort,
-  ];
-  if (cameraPlanPath) renderArgs.push("--camera-plan", cameraPlanPath);
-  if (stretch !== undefined && stretch !== null) renderArgs.push("--stretch", String(stretch));
-  if (hzoom !== undefined && hzoom !== null) renderArgs.push("--hzoom", String(hzoom));
-  await runNode(job, "RENDER FFMPEG", "src/index.ts", renderArgs);
-  pushLog(job, "[render] selesai -> final_short.mp4");
-  job.artifacts.push({ name: "final_short.mp4", path: finalShort, kind: "video" });
+  const tpl = input.template || "loki";
+  for (let p = 0; p < partDirs.length; p += 1) {
+    const partDir = partDirs[p];
+    const isMulti = partDirs.length > 1;
+    const partTag = isMulti ? `[part-${String(p + 1).padStart(2, "0")}/${partDirs.length}] ` : "";
+    const rel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
+    const partManifest = path.join(partDir, "manifest.json");
 
-  // 5. CAPTION tscaps headless (template pilihan user) -------------------------
-  let finalCaptioned;
-  if (caption) {
-    pushStatus(job, "running", "caption");
-    const tpl = input.template || "loki";
-    const capName = `final_captioned_${tpl}.mp4`;
-    const srtName = `final_captioned_${tpl}.srt`;
-    const srtPath = path.join(job.dir, srtName);
-    finalCaptioned = path.join(job.dir, capName);
-    try {
-      await run(job, `CAPTION TSCAPS (${tpl})`, process.execPath, [
-        CFG.tsxCli, "cli/render-movie2short-template.ts",
-        "--template", tpl,
-        "--video", finalShort,
-        "--manifest", manifestPath,
-        "--durations", narrationJson,
-        "--output", finalCaptioned,
-        "--width", "1080",
-        "--height", "1920",
-      ], {
-        cwd: CFG.tscapsExamples,
-        env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome },
-      });
-      pushLog(job, `[caption] selesai -> ${capName}`);
-      job.artifacts.push({ name: capName, path: finalCaptioned, kind: "video" });
-      if (fs.existsSync(srtPath)) job.artifacts.push({ name: srtName, path: srtPath, kind: "srt" });
-    } catch (e) {
-      pushLog(job, `[caption] gagal (video tetap tersedia tanpa caption): ${e.message}`, "warn");
+    // 3. TTS via audio.cpp (audiocpp_cli, batch OmniVoice, GPU) ----------------
+    pushStatus(job, "running", "tts");
+    const narrationWav = path.join(partDir, "narration_audiocpp_natural.wav");
+    const narrationJson = path.join(partDir, "narration_audiocpp_natural.json");
+    const ttsArgs = [
+      CFG.ttsScript,
+      "--manifest", partManifest,
+      "--ref-audio", CFG.refAudio,
+      "--ref-text", CFG.refText,
+      "--output", narrationWav,
+      "--exe", CFG.audiocppExe,
+      "--model", CFG.audiocppModel,
+      "--model-specs", CFG.audiocppModelSpecs,
+      "--backend", CFG.audiocppBackend,
+    ];
+    if (lead !== undefined && lead !== null) ttsArgs.push("--lead", String(lead));
+    if (tail !== undefined && tail !== null) ttsArgs.push("--tail", String(tail));
+    if (!CFG.audiocppModel) {
+      throw new Error("Model OmniVoice (audiocpp) tidak ditemukan di cache HF. Set env AUDIOCPP_MODEL.");
+    }
+    await run(job, `${partTag}TTS AUDIOCPP (${CFG.audiocppBackend})`, process.execPath, [CFG.ttsScript, ...ttsArgs]);
+    pushLog(job, `${partTag}[tts] selesai -> ${rel(narrationWav)}`);
+
+    // 4. RENDER FFmpeg (narasi master timeline, per part) -----------------------
+    pushStatus(job, "running", "render");
+    const finalShort = path.join(partDir, "final_short.mp4");
+    const renderArgs = [
+      "--only-render", partManifest,
+      "--video", videoPath,
+      "--audio", narrationWav,
+      "--scene-durations", narrationJson,
+      "--out", finalShort,
+    ];
+    if (cameraPlanPath) renderArgs.push("--camera-plan", cameraPlanPath);
+    if (stretch !== undefined && stretch !== null) renderArgs.push("--stretch", String(stretch));
+    if (hzoom !== undefined && hzoom !== null) renderArgs.push("--hzoom", String(hzoom));
+    await runNode(job, `${partTag}RENDER FFMPEG`, "src/index.ts", renderArgs);
+    pushLog(job, `${partTag}[render] selesai -> ${rel(finalShort)}`);
+    job.artifacts.push({ name: rel(finalShort), path: finalShort, kind: "video" });
+
+    // 5. CAPTION tscaps headless (per part, template pilihan user) ---------------
+    if (caption) {
+      pushStatus(job, "running", "caption");
+      const capName = `final_captioned_${tpl}.mp4`;
+      const srtName = `final_captioned_${tpl}.srt`;
+      const srtPath = path.join(partDir, srtName);
+      const finalCaptioned = path.join(partDir, capName);
+      try {
+        await run(job, `${partTag}CAPTION TSCAPS (${tpl})`, process.execPath, [
+          CFG.tsxCli, "cli/render-movie2short-template.ts",
+          "--template", tpl,
+          "--video", finalShort,
+          "--manifest", partManifest,
+          "--durations", narrationJson,
+          "--output", finalCaptioned,
+          "--width", "1080",
+          "--height", "1920",
+        ], {
+          cwd: CFG.tscapsExamples,
+          env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome },
+        });
+        pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
+        job.artifacts.push({ name: rel(finalCaptioned), path: finalCaptioned, kind: "video" });
+        if (fs.existsSync(srtPath)) job.artifacts.push({ name: rel(srtPath), path: srtPath, kind: "srt" });
+      } catch (e) {
+        pushLog(job, `${partTag}[caption] gagal (video tetap tersedia tanpa caption): ${e.message}`, "warn");
+      }
+    }
+
+    // Artifacts pendukung per part
+    for (const [name, p, kind] of [
+      ["manifest.json", partManifest, "json"],
+      ["narasi.txt", path.join(partDir, "narasi.txt"), "text"],
+      ["narration_audiocpp_natural.wav", narrationWav, "audio"],
+      ["narration_audiocpp_natural.json", narrationJson, "json"],
+    ]) {
+      if (fs.existsSync(p)) job.artifacts.push({ name: rel(p), path: p, kind });
     }
   }
 
-  // Artifacts pendukung
-  for (const [name, p, kind] of [
-    ["manifest.json", manifestPath, "json"],
-    ["narasi.txt", path.join(job.dir, "narasi.txt"), "text"],
-    ["narration_omnivoice_natural.wav", narrationWav, "audio"],
-    ["narration_omnivoice_natural.json", narrationJson, "json"],
-  ]) {
-    if (fs.existsSync(p)) job.artifacts.push({ name, path: p, kind });
-  }
-
   pushStatus(job, "done");
-  pushLog(job, "\n✅ Pipeline selesai.");
+  pushLog(job, `\n✅ Pipeline selesai (${partDirs.length} part).`);
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +455,9 @@ const server = http.createServer(async (req, res) => {
     const sanitized = {
       videoPath,
       model: input.model || "gemini/gemini-3.6-flash",
-      chunk: input.chunk !== undefined ? Number(input.chunk) : undefined, // 0 = tanpa chunk (full video)
+      chunk: input.chunk !== undefined
+        ? (typeof input.chunk === "boolean" ? input.chunk : Number(input.chunk))
+        : true, // true = 40s chunks; false = full video
       stretch: input.stretch !== undefined ? Number(input.stretch) : undefined,
       hzoom: input.hzoom !== undefined ? Number(input.hzoom) : undefined,
       cameraPlan: !!input.cameraPlan,
@@ -418,6 +465,8 @@ const server = http.createServer(async (req, res) => {
       template: typeof input.template === "string" ? input.template : "loki",
       lead: input.lead !== undefined ? Number(input.lead) : 5,
       tail: input.tail !== undefined ? Number(input.tail) : 5,
+      outputMode: input.outputMode === "auto" || input.outputMode === "manual" ? input.outputMode : "one",
+      parts: input.parts !== undefined ? Number(input.parts) : 0,
     };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, jobId: job.id }));
@@ -544,11 +593,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- API: serve artifact --------------------------------------------------------
-  const fileMatch = pathname.match(/^\/files\/([\w-]+)\/([^/]+)$/);
+  // name boleh mengandung subfolder (mis. part-01/final_short.mp4)
+  const fileMatch = pathname.match(/^\/files\/([\w-]+)\/(.+)$/);
   if (fileMatch) {
     const [, jobId, fileName] = fileMatch;
     const job = jobs.get(jobId);
-    const safeName = path.basename(fileName);
+    const safeName = path.normalize(fileName).replace(/^([.][.][/\\])+/, "").replace(/\\/g, "/");
     const candidate = job
       ? job.artifacts.find((a) => a.name === safeName)
       : null;
@@ -593,22 +643,28 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // --- Static frontend ------------------------------------------------------------
-  if (pathname === "/") {
-    const p = path.join(PUBLIC_DIR, "index.html");
-    res.writeHead(200, { "content-type": MIME[".html"] });
-    fs.createReadStream(p).pipe(res);
-    return;
-  }
-  // Path traversal guard: pastikan path tetap di dalam PUBLIC_DIR
-  // (URL constructor menormalisasi ../ tapi %5c -> backslash Windows bisa lolos)
-  const staticPath = path.join(PUBLIC_DIR, pathname.replace(/^\/+/, ""));
-  const resolvedStatic = path.resolve(staticPath);
-  if (resolvedStatic.startsWith(PUBLIC_DIR + path.sep) && fs.existsSync(staticPath) && fs.statSync(staticPath).isFile()) {
-    const ext = path.extname(staticPath).toLowerCase();
-    res.writeHead(200, { "content-type": MIME[ext] || "application/octet-stream" });
-    fs.createReadStream(staticPath).pipe(res);
-    return;
+  // --- API: serve static frontend ----------------------------------------------
+  if (req.method === "GET") {
+    let filePath = path.join(ROOT, "tscaps-web", "dist", pathname === "/" ? "index.html" : pathname);
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        filePath = path.join(filePath, "index.html");
+      }
+      const ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, { "content-type": MIME[ext] || "text/html" });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    } catch {
+      // Fallback to index.html for SPA routing
+      try {
+        const index = path.join(ROOT, "tscaps-web", "dist", "index.html");
+        fs.statSync(index);
+        res.writeHead(200, { "content-type": "text/html" });
+        fs.createReadStream(index).pipe(res);
+        return;
+      } catch {}
+    }
   }
 
   res.writeHead(404, { "content-type": "application/json" });
@@ -630,6 +686,5 @@ const PORT = process.env.PORT || 3131;
 server.listen(PORT, () => {
   console.log(`🎬 MOVIE2SHORT Studio UI`);
   console.log(`   http://localhost:${PORT}`);
-  console.log(`   Public : ${PUBLIC_DIR}`);
   console.log(`   Jobs   : ${JOBS_DIR}`);
 });

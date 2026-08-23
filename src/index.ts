@@ -1,8 +1,10 @@
+import { config } from 'dotenv';
+config();
 import { parseArgs } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import { runAnalysisPipeline } from './analyzer.js';
-import { renderShortVideo } from './stage4/renderer.js';
+import { renderShortVideo } from './renderer/renderer.js';
 
 async function main() {
   const { values, positionals } = parseArgs({
@@ -19,7 +21,7 @@ async function main() {
       model: {
         type: 'string',
         short: 'm',
-        default: 'gemini/gemini-3.6-flash'
+        default: process.env.M2S_MODEL_NAME || 'ag/gemini-3.6-flash-high'
       },
       'only-render': {
         type: 'string' // Pass a manifest path to skip analysis
@@ -29,6 +31,15 @@ async function main() {
       },
       'scene-durations': {
         type: 'string' // Optional per-scene narration durations JSON
+      },
+      'camera-plan': {
+        type: 'string' // Optional camera plan (director positions) JSON
+      },
+      stretch: {
+        type: 'string' // 0..1 — mode lonjong: 0 = rasio asli, 1 = stretch penuh 1080x1920
+      },
+      hzoom: {
+        type: 'string' // >1 — potong sisi kiri-kanan agar karakter terlihat lebih lebar (mis. 1.15)
       }
     },
     allowPositionals: true
@@ -94,7 +105,10 @@ async function main() {
       outputMp4,
       videoPath,
       values.audio ? path.resolve(values.audio) : undefined,
-      values['scene-durations'] ? path.resolve(values['scene-durations']) : undefined
+      values['scene-durations'] ? path.resolve(values['scene-durations']) : undefined,
+      values['camera-plan'] ? path.resolve(values['camera-plan']) : undefined,
+      values.stretch !== undefined ? Number(values.stretch) : undefined,
+      values.hzoom !== undefined ? Number(values.hzoom) : undefined
     );
     return;
   }
@@ -131,7 +145,10 @@ async function main() {
       outputMp4,
       videoPath,
       values.audio ? path.resolve(values.audio) : undefined,
-      values['scene-durations'] ? path.resolve(values['scene-durations']) : undefined
+      values['scene-durations'] ? path.resolve(values['scene-durations']) : undefined,
+      values['camera-plan'] ? path.resolve(values['camera-plan']) : undefined,
+      values.stretch !== undefined ? Number(values.stretch) : undefined,
+      values.hzoom !== undefined ? Number(values.hzoom) : undefined
     );
     console.log(`- Final Video:  ${outputMp4}`);
     console.log(`- Narration:    ${path.join(outputDir, 'narasi.txt')}`);

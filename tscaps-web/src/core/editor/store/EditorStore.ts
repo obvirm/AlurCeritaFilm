@@ -59,6 +59,8 @@ export class EditorStore extends EventTarget {
       projectName: 'Untitled',
       projectCreatedAt: null,
       projectThumbnail: null,
+      parts: [],
+      activePartIndex: 0,
       dirty: false,
     };
   }
@@ -143,6 +145,8 @@ export class EditorStore extends EventTarget {
       projectName: 'Untitled',
       projectCreatedAt: null,
       projectThumbnail: null,
+      parts: [],
+      activePartIndex: 0,
       dirty: false,
       ...restExtra,
     };
