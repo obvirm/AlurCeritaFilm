@@ -39,6 +39,31 @@ output_regeneration*.log
 .DS_Store
 Thumbs.db
 
+# Scratch/debug scripts (konvensi repo: prefix underscore = eksperimen)
+tools/_*.py
+tools/_*.mjs
+tscaps-web/_pw_*.mjs
+temp_e829622_vlm.ts
+
+# Build frontend
+tscaps-web/dist/
+
+# Output pipeline di root
+output_getvid/
+
+# PID / agent state
+.natural_pid
+.test_pid*
+.pi/sf/
+
+# Screenshot junk root
+er (2).png
+
+# Eksperimen referensi TTS
+data/reference/_*
+data/reference/bangun_dunia_ref*
+data/reference/patrick_ref*
+
 # Editor
 .idea/
 .vscode/
