@@ -3,8 +3,9 @@
  * Generate one OmniVoice narration track via audio.cpp (audiocpp_cli, C++/ggml).
  *
  * Node murni — TIDAK ada Python di jalur TTS. Semua sintesis dijalankan oleh
- * audiocpp_cli.exe (model OmniVoice di-load SEKALI, semua scene diproses dalam
- * satu session batch). Script ini hanya orkestrasi: baca manifest -> batch text
+ * audiocpp_cli.exe (model OmniVoice). Scene dibagi per-chunk kecil (default 8,
+ * env AUDIOCPP_BATCH_SIZE) — satu proses exe per chunk supaya RAM host tidak
+ * menumpuk di video panjang. Script ini orkestrasi: baca manifest -> batch
  * -> jalankan exe -> rakit WAV final + JSON metadata.
  *
  * Kontrak output IDENTIK dengan versi Python lama (omnivoice_manifest_tts_natural.py):
@@ -129,70 +130,83 @@ function main() {
     return text;
   });
 
-  fs.writeFileSync(batchTxt, texts.join("\n") + "\n", "utf8");
-  console.log(`[Audiocpp-natural] ${scenes.length} scene -> batch audiocpp_cli (model load sekali)`);
-
-  const cmd = [
-    exe,
-    "--task", "tts",
-    "--family", "omnivoice",
-    "--model-spec-override", specs,
-    "--model", path.resolve(model),
-    "--backend", args.backend || "cuda",
-    "--batch-text-file", batchTxt,
-    "--voice-ref", refAudio,
-    "--reference-text", refText,
-    "--language", args.language || "Indonesian",
-    "--num-inference-steps", args.steps || "16",
-    "--guidance-scale", "2.0",
-    "--request-option", `speed=${args.speed || "1.12"}`,
-    "--out-dir", batchOut,
-    "--batch-manifest-out", batchManifest,
-  ];
-  console.log(`[Audiocpp-natural] ${cmd.join(" ")}`);
-  const result = spawnSync(cmd[0], cmd.slice(1), { encoding: "utf8" });
-  if (result.stdout) process.stdout.write(result.stdout);
-  if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status !== 0) {
-    throw new Error(`audiocpp_cli gagal (rc=${result.status})`);
-  }
-  if (!fs.existsSync(batchManifest)) {
-    throw new Error("audiocpp_cli tidak menulis batch manifest");
-  }
-
-  const batch = JSON.parse(fs.readFileSync(batchManifest, "utf8"));
-  const requests = new Map((batch.requests || []).map((r) => [r.id, r]));
+  // Batch DIPECAH per kelompok kecil: satu proses audiocpp_cli per chunk,
+  // jadi memori host nggak numpuk sepanjang ratusan scene (film panjang).
+  // Model tetap ke-load ulang tiap chunk — trade-off sengaja dibayar demi
+  // kestabilan RAM (host 32GB sering jenuh, lihat AGENTS.md).
+  const batchSize = Math.max(1, Number(args["batch-size"] || process.env.AUDIOCPP_BATCH_SIZE || 8));
+  const chunkCount = Math.ceil(texts.length / batchSize);
 
   const generated = [];
   const sceneFiles = [];
   const sceneDurations = [];
   let sr = 0;
-  for (let i = 0; i < texts.length; i += 1) {
-    const rid = `line_${i + 1}`;
-    const info = requests.get(rid);
-    if (!info) throw new Error(`Hasil batch untuk ${rid} tidak ada di manifest`);
-    const wavPath = path.join(batchOut, `${rid}.wav`);
-    if (!fs.existsSync(wavPath)) throw new Error(`Output batch tidak ditemukan: ${wavPath}`);
-    const { rate, frames } = parseWav(wavPath);
-    sr = rate;
-    const dur = frames.length / 2 / rate;
 
-    // RAW TTS: lead + tail gap. Gap ini HANYA untuk file raw per-scene.
-    let padded = frames;
-    const lead = Number(args.lead ?? 5);
-    const tail = Number(args.tail ?? 5);
-    if (lead > 0) padded = Buffer.concat([SILENCE_2S(Math.round(lead * sr)), padded]);
-    if (tail > 0) padded = Buffer.concat([padded, SILENCE_2S(Math.round(tail * sr))]);
+  for (let c = 0; c < chunkCount; c += 1) {
+    const sliceStart = c * batchSize;
+    const slice = texts.slice(sliceStart, sliceStart + batchSize);
+    fs.writeFileSync(batchTxt, slice.join("\n") + "\n", "utf8");
+    console.log(`[Audiocpp-natural] Chunk ${c + 1}/${chunkCount}: ${slice.length} scene -> batch audiocpp_cli`);
 
-    const scenePath = path.join(sceneDir, `scene_${String(i + 1).padStart(4, "0")}.wav`);
-    writeWav(scenePath, sr, padded);
-    sceneFiles.push(path.relative(path.dirname(outputPath), scenePath).split(path.sep).join("/"));
+    const cmd = [
+      exe,
+      "--task", "tts",
+      "--family", "omnivoice",
+      "--model-spec-override", specs,
+      "--model", path.resolve(model),
+      "--backend", args.backend || "cuda",
+      "--batch-text-file", batchTxt,
+      "--voice-ref", refAudio,
+      "--reference-text", refText,
+      "--language", args.language || "Indonesian",
+      "--num-inference-steps", args.steps || "16",
+      "--guidance-scale", "2.0",
+      "--request-option", `speed=${args.speed || "1.12"}`,
+      "--out-dir", batchOut,
+      "--batch-manifest-out", batchManifest,
+    ];
+    console.log(`[Audiocpp-natural] ${cmd.join(" ")}`);
+    const result = spawnSync(cmd[0], cmd.slice(1), { encoding: "utf8" });
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.status !== 0) {
+      throw new Error(`audiocpp_cli gagal (rc=${result.status})`);
+    }
+    if (!fs.existsSync(batchManifest)) {
+      throw new Error("audiocpp_cli tidak menulis batch manifest");
+    }
 
-    generated.push(frames);
-    sceneDurations.push(Math.round(dur * 1000) / 1000);
-    console.log(
-      `[Audiocpp-natural] Scene ${i + 1}/${texts.length} (${(dur).toFixed(2)}s): ${texts[i].slice(0, 60)}`
-    );
+    const batch = JSON.parse(fs.readFileSync(batchManifest, "utf8"));
+    const requests = new Map((batch.requests || []).map((r) => [r.id, r]));
+
+    for (let j = 0; j < slice.length; j += 1) {
+      const gi = sliceStart + j;
+      const rid = `line_${j + 1}`;
+      const info = requests.get(rid);
+      if (!info) throw new Error(`Hasil batch untuk ${rid} tidak ada di manifest`);
+      const wavPath = path.join(batchOut, `${rid}.wav`);
+      if (!fs.existsSync(wavPath)) throw new Error(`Output batch tidak ditemukan: ${wavPath}`);
+      const { rate, frames } = parseWav(wavPath);
+      sr = rate;
+      const dur = frames.length / 2 / rate;
+
+      // RAW TTS: lead + tail gap. Gap ini HANYA untuk file raw per-scene.
+      let padded = frames;
+      const lead = Number(args.lead ?? 5);
+      const tail = Number(args.tail ?? 5);
+      if (lead > 0) padded = Buffer.concat([SILENCE_2S(Math.round(lead * sr)), padded]);
+      if (tail > 0) padded = Buffer.concat([padded, SILENCE_2S(Math.round(tail * sr))]);
+
+      const scenePath = path.join(sceneDir, `scene_${String(gi + 1).padStart(4, "0")}.wav`);
+      writeWav(scenePath, sr, padded);
+      sceneFiles.push(path.relative(path.dirname(outputPath), scenePath).split(path.sep).join("/"));
+
+      generated.push(frames);
+      sceneDurations.push(Math.round(dur * 1000) / 1000);
+      console.log(
+        `[Audiocpp-natural] Scene ${gi + 1}/${texts.length} (${(dur).toFixed(2)}s): ${texts[gi].slice(0, 60)}`
+      );
+    }
   }
 
   const track = Buffer.concat(generated);

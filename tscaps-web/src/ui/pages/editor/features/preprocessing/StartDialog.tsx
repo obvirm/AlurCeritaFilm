@@ -127,6 +127,7 @@ export function StartDialog({
   const [outputMode, setOutputMode] = useState<'one' | 'auto' | 'manual'>('one');
   const [chunk, setChunk] = useState<boolean>(true);
   const [parts, setParts] = useState<number>(3);
+  const [minutesPerPart, setMinutesPerPart] = useState<number>(2);
   const [stretch, setStretch] = useState<number>(0);
   const [hzoom, setHzoom] = useState<number>(1);
   const [cameraPlan, setCameraPlan] = useState<boolean>(false);
@@ -246,7 +247,7 @@ export function StartDialog({
   const handleGenerateShort = () => {
     if (!movie2short) return;
     const opts: Movie2ShortOptions = {
-      model, template, outputMode, chunk, parts,
+      model, template, outputMode, chunk, parts, minutesPerPart,
       stretch, hzoom, cameraPlan, lead, tail,
     };
     void movie2short.execute(opts);
@@ -373,9 +374,24 @@ export function StartDialog({
               </label>
             )}
             {outputMode === 'auto' && (
-              <p className="m-0 mt-1.5 text-xs text-fg-faint">
-                Dibagi otomatis ±90 detik per part, sesuai alur cerita.
-              </p>
+              <label className="block mt-2">
+                <span className="text-sm text-fg-secondary">
+                  Target per part — {minutesPerPart.toFixed(minutesPerPart % 1 ? 1 : 0)} menit
+                </span>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={5}
+                  step={0.5}
+                  value={minutesPerPart}
+                  onChange={(e) => setMinutesPerPart(Number(e.target.value))}
+                  className="w-full accent-accent mt-1"
+                />
+                <span className="block m-0 mt-1 text-xs text-fg-faint">
+                  Jumlah part dihitung otomatis dari durasi narasi asli (TTS) —
+                  panjang tiap part nyaris tepat sesuai target.
+                </span>
+              </label>
             )}
             {outputMode !== 'one' && (
               <p className="m-0 mt-1.5 text-xs text-fg-faint">

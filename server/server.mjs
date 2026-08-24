@@ -209,6 +209,7 @@ function runNode(job, label, script, args, opts = {}) {
 // ---------------------------------------------------------------------------
 async function runPipeline(job, input) {
   const { videoPath, model, stretch, hzoom, caption, lead, tail, outputMode = "one", parts = 0 } = input;
+  const minutesPerPart = Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : 2;
   const chunkEnabled = input.chunk === undefined
     ? true
     : typeof input.chunk === "boolean" ? input.chunk : Number(input.chunk) > 0;
@@ -217,7 +218,7 @@ async function runPipeline(job, input) {
     : typeof input.chunk === "boolean" ? (input.chunk ? 40 : 0) : Number(input.chunk);
   pushLog(job, `Video  : ${videoPath}`);
   pushLog(job, `Model  : ${model}`);
-  const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ~90s/part)` : "One Short";
+  const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ${minutesPerPart} menit/part)` : "One Short";
   pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
 
   // 1. ANALYSIS -------------------------------------------------------------
@@ -250,19 +251,61 @@ async function runPipeline(job, input) {
   }
   pushLog(job, "[analysis] selesai -> manifest.json");
 
-  // 2.5 SPLIT (opsional) --------------------------------------------------------
-  // Analisis Gemini hanya SEKALI; manifest dibagi menjadi N part scene
-  // berurutan. One Short = 1 part (job dir), tanpa split.
+  const rel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
+
+  // 2. TTS SEKALI untuk seluruh manifest (audiocpp_cli, batch OmniVoice, GPU) --
+  // Model di-load satu sesi untuk semua scene — jauh lebih cepat daripada
+  // N sesi per part. Split dilakukan SETELAH TTS supaya batas part dihitung
+  // dari durasi narasi ASLI (narasi = master timeline), bukan proxy durasi
+  // sumber. Hasilnya panjang tiap part nyaris tepat sesuai target menit.
+  pushStatus(job, "running", "tts");
+  const fullNarrationWav = path.join(job.dir, "narration_audiocpp_natural.wav");
+  const fullNarrationJson = path.join(job.dir, "narration_audiocpp_natural.json");
+  const ttsArgs = [
+    CFG.ttsScript,
+    "--manifest", manifestPath,
+    "--ref-audio", CFG.refAudio,
+    "--ref-text", CFG.refText,
+    "--output", fullNarrationWav,
+    "--exe", CFG.audiocppExe,
+    "--model", CFG.audiocppModel,
+    "--model-specs", CFG.audiocppModelSpecs,
+    "--backend", CFG.audiocppBackend,
+  ];
+  if (lead !== undefined && lead !== null) ttsArgs.push("--lead", String(lead));
+  if (tail !== undefined && tail !== null) ttsArgs.push("--tail", String(tail));
+  if (!CFG.audiocppModel) {
+    throw new Error("Model OmniVoice (audiocpp) tidak ditemukan di cache HF. Set env AUDIOCPP_MODEL.");
+  }
+  await run(job, `TTS AUDIOCPP (${CFG.audiocppBackend})`, process.execPath, [CFG.ttsScript, ...ttsArgs]);
+  pushLog(job, `[tts] selesai -> ${rel(fullNarrationWav)}`);
+
+  // 2.5 SPLIT post-TTS (opsional) ------------------------------------------------
   const partDirs = [];
   if (outputMode !== "one") {
     pushStatus(job, "running", "split");
     const partsDir = path.join(job.dir, "parts");
-    await runNode(job, "SPLIT MANIFEST", "tools/split_manifest.ts", [
+    const splitArgs = [
       manifestPath, partsDir, String(parts || 0),
-    ]);
+      "--narration", fullNarrationJson,
+    ];
+    if (minutesPerPart > 0) splitArgs.push("--minutes", String(minutesPerPart));
+    await runNode(job, "SPLIT MANIFEST", "tools/split_manifest.ts", splitArgs);
     const entries = await fsp.readdir(partsDir, { withFileTypes: true }).catch(() => []);
     for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (e.isDirectory() && /^part-\d+$/.test(e.name)) partDirs.push(path.join(partsDir, e.name));
+    }
+    // Potong WAV narasi penuh per part memakai offset kumulatif dari splitter.
+    for (const partDir of partDirs) {
+      const durInfo = JSON.parse(await fsp.readFile(path.join(partDir, "narration_durations.json"), "utf8"));
+      const slicePath = path.join(partDir, "narration_part.wav");
+      await run(job, `[${path.basename(partDir)}] SLICE AUDIO`, "ffmpeg", [
+        "-nostdin", "-y",
+        "-i", fullNarrationWav,
+        "-ss", String(durInfo.narrationStartSec),
+        "-t", String(durInfo.durationSec),
+        "-c:a", "pcm_s16le", slicePath,
+      ]);
     }
     pushLog(job, `[split] ${partDirs.length} part siap.`);
   }
@@ -273,33 +316,13 @@ async function runPipeline(job, input) {
     const partDir = partDirs[p];
     const isMulti = partDirs.length > 1;
     const partTag = isMulti ? `[part-${String(p + 1).padStart(2, "0")}/${partDirs.length}] ` : "";
-    const rel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
     const partManifest = path.join(partDir, "manifest.json");
+    // Mode split: audio + durations hasil potongan per part.
+    // One Short: langsung track penuh dari stage TTS.
+    const narrationWav = isMulti ? path.join(partDir, "narration_part.wav") : fullNarrationWav;
+    const narrationJson = isMulti ? path.join(partDir, "narration_durations.json") : fullNarrationJson;
 
-    // 3. TTS via audio.cpp (audiocpp_cli, batch OmniVoice, GPU) ----------------
-    pushStatus(job, "running", "tts");
-    const narrationWav = path.join(partDir, "narration_audiocpp_natural.wav");
-    const narrationJson = path.join(partDir, "narration_audiocpp_natural.json");
-    const ttsArgs = [
-      CFG.ttsScript,
-      "--manifest", partManifest,
-      "--ref-audio", CFG.refAudio,
-      "--ref-text", CFG.refText,
-      "--output", narrationWav,
-      "--exe", CFG.audiocppExe,
-      "--model", CFG.audiocppModel,
-      "--model-specs", CFG.audiocppModelSpecs,
-      "--backend", CFG.audiocppBackend,
-    ];
-    if (lead !== undefined && lead !== null) ttsArgs.push("--lead", String(lead));
-    if (tail !== undefined && tail !== null) ttsArgs.push("--tail", String(tail));
-    if (!CFG.audiocppModel) {
-      throw new Error("Model OmniVoice (audiocpp) tidak ditemukan di cache HF. Set env AUDIOCPP_MODEL.");
-    }
-    await run(job, `${partTag}TTS AUDIOCPP (${CFG.audiocppBackend})`, process.execPath, [CFG.ttsScript, ...ttsArgs]);
-    pushLog(job, `${partTag}[tts] selesai -> ${rel(narrationWav)}`);
-
-    // 4. RENDER FFmpeg (narasi master timeline, per part) -----------------------
+    // 3. RENDER FFmpeg (narasi master timeline, per part) -----------------------
     pushStatus(job, "running", "render");
     const finalShort = path.join(partDir, "final_short.mp4");
     const renderArgs = [
@@ -345,11 +368,11 @@ async function runPipeline(job, input) {
     }
 
     // Artifacts pendukung per part
-    for (const [name, p, kind] of [
-      ["manifest.json", partManifest, "json"],
-      ["narasi.txt", path.join(partDir, "narasi.txt"), "text"],
-      ["narration_audiocpp_natural.wav", narrationWav, "audio"],
-      ["narration_audiocpp_natural.json", narrationJson, "json"],
+    for (const [p, kind] of [
+      [partManifest, "json"],
+      [path.join(partDir, "narasi.txt"), "text"],
+      [narrationWav, "audio"],
+      [narrationJson, "json"],
     ]) {
       if (fs.existsSync(p)) job.artifacts.push({ name: rel(p), path: p, kind });
     }
@@ -449,6 +472,7 @@ const server = http.createServer(async (req, res) => {
       tail: input.tail !== undefined ? Number(input.tail) : 5,
       outputMode: input.outputMode === "auto" || input.outputMode === "manual" ? input.outputMode : "one",
       parts: input.parts !== undefined ? Number(input.parts) : 0,
+      minutesPerPart: Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : 2,
     };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, jobId: job.id }));
