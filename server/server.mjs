@@ -19,6 +19,7 @@
  * Jalankan:  node server/server.mjs        (atau: npm run dev:ui)
  */
 import http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
@@ -40,23 +41,44 @@ const CFG = {
   // TTS via audio.cpp (audiocpp_cli.exe — engine C++/ggml, batch mode, GPU).
   // Orkestrasi Node murni (tools/audiocpp_manifest_tts.mjs) — TANPA Python.
   ttsScript: path.join(ROOT, "tools", "audiocpp_manifest_tts.mjs"),
-  audiocppExe: process.env.AUDIOCPP_EXE || "D:\\audio-cpp-lowend-gpu\\build\\windows-cuda-release\\bin\\audiocpp_cli.exe",
-  audiocppModelSpecs: process.env.AUDIOCPP_MODEL_SPECS || "D:\\audio-cpp-lowend-gpu\\model_specs",
+  audiocppExe: process.env.AUDIOCPP_EXE || path.join(ROOT, "sandbox", "audio-cpp", "bin", "audiocpp_cli.exe"),
+  audiocppModelSpecs: process.env.AUDIOCPP_MODEL_SPECS || path.join(ROOT, "sandbox", "audio-cpp", "model_specs"),
   audiocppBackend: process.env.AUDIOCPP_BACKEND || "cuda",
-  audiocppModel: process.env.AUDIOCPP_MODEL || (() => {
-    // Auto-resolve model OmniVoice dari cache HF (snapshot terbaru)
-    const snaps = path.join(ROOT, ".cache", "huggingface", "hub", "models--k2-fsa--OmniVoice", "snapshots");
-    try {
-      const dirs = fs.readdirSync(snaps);
-      if (dirs.length) return path.join(snaps, dirs[0]);
-    } catch { /* fallthrough */ }
+  audiocppModel: process.env.AUDIOCPP_MODEL || path.join(ROOT, "models", "OmniVoice") || (() => {
+    // Auto-resolve model OmniVoice dari snapshot terbaru. Cek beberapa lokasi
+    // cache HF: project-local, default user (~/.cache), lalu HF_HOME jika ada.
+    const hubCandidates = [
+      path.join(ROOT, ".cache", "huggingface", "hub"),
+      path.join(os.homedir(), ".cache", "huggingface", "hub"),
+      process.env.HF_HOME ? path.join(process.env.HF_HOME, "hub") : "",
+    ].filter(Boolean);
+    for (const hub of hubCandidates) {
+      const snaps = path.join(hub, "models--k2-fsa--OmniVoice", "snapshots");
+      try {
+        const dirs = fs.readdirSync(snaps);
+        if (dirs.length) return path.join(snaps, dirs[0]);
+      } catch { /* coba kandidat berikutnya */ }
+    }
     return "";
   })(),
   refAudio: path.join(ROOT, "data", "reference", "test_snippet.wav"),
   refText: path.join(ROOT, "data", "reference", "test_snippet.txt"),
-  // tscaps (repo terpisah, headless caption via Playwright + Chrome)
-  tscapsExamples: process.env.TSCAPS_EXAMPLES_DIR || path.resolve(ROOT, "..", "tscaps", "packages", "engine", "examples"),
-  tscapsChrome: process.env.TSCAPS_CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  // tscaps (headless caption via Playwright + Chrome — sandbox di repo)
+  tscapsExamples: process.env.TSCAPS_EXAMPLES_DIR || path.join(ROOT, "sandbox", "tscaps-engine", "examples"),
+  tscapsTemplates: process.env.TSCAPS_TEMPLATES_DIR || path.join(ROOT, "sandbox", "templates"),
+  tscapsChrome: process.env.TSCAPS_CHROME_PATH || (() => {
+    const base = path.join(ROOT, "sandbox", "chromium");
+    try {
+      const dirs = fs.readdirSync(base).filter((d) => d.startsWith("chromium-"));
+      if (dirs.length) {
+        const latest = dirs.sort().pop();
+        const p = path.join(base, latest, "chrome-win64", "chrome.exe");
+        if (fs.existsSync(p)) return p;
+      }
+    } catch {}
+    return path.join(base, "chromium-1234", "chrome-win64", "chrome.exe");
+  })(),
+  playwrightBrowsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(ROOT, "sandbox", "chromium"),
 };
 
 await fsp.mkdir(UPLOAD_DIR, { recursive: true });
@@ -209,7 +231,12 @@ function runNode(job, label, script, args, opts = {}) {
 // ---------------------------------------------------------------------------
 async function runPipeline(job, input) {
   const { videoPath, model, stretch, hzoom, caption, lead, tail, outputMode = "one", parts = 0 } = input;
-  const minutesPerPart = Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : 2;
+  const minutesPerPart = Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : (Number(process.env.M2S_MINUTES_PER_PART) > 0 ? Number(process.env.M2S_MINUTES_PER_PART) : 2);
+  // Rekap full-spoiler berdurasi target (menit -> detik). Hanya untuk mode
+  // One Short; mode split sudah punya kontrol panjangnya sendiri (minutesPerPart).
+  const rawTargetMinutes = Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0;
+  const targetSeconds = outputMode === "one" ? Math.round(rawTargetMinutes * 60) : 0;
+  const recapLabel = targetSeconds > 0 ? ` | Recap ±${rawTargetMinutes} mnt` : "";
   const chunkEnabled = input.chunk === undefined
     ? true
     : typeof input.chunk === "boolean" ? input.chunk : Number(input.chunk) > 0;
@@ -219,7 +246,7 @@ async function runPipeline(job, input) {
   pushLog(job, `Video  : ${videoPath}`);
   pushLog(job, `Model  : ${model}`);
   const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ${minutesPerPart} menit/part)` : "One Short";
-  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
+  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel}${recapLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
 
   // 1. ANALYSIS -------------------------------------------------------------
   pushStatus(job, "running", "analysis");
@@ -253,6 +280,34 @@ async function runPipeline(job, input) {
 
   const rel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
 
+  // 1.5 CONDENSE (opsional) ---------------------------------------------------
+  // Satu short FULL-SPOILER berdurasi target dari video panjang: LLM memilih
+  // subset scene kunci (awal->tengah->klimaks->akhir) dan memadatkan narasinya
+  // ke budget karakter ±target detik. Visual scene asli dipertahankan; render
+  // nanti memotong tiap klip ke durasi narasi barunya (narasi = master timeline).
+  let effectiveManifest = manifestPath;
+  if (targetSeconds > 0) {
+    pushStatus(job, "running", "condense");
+    const originalSceneCount = (JSON.parse(await fsp.readFile(manifestPath, "utf8"))).scenes.length;
+    const condensedPath = path.join(job.dir, "manifest_condensed.json");
+    await runNode(job, "CONDENSE RECAP", "tools/condense_manifest.ts", [
+      manifestPath, condensedPath,
+      "--seconds", String(targetSeconds),
+      "--model", model,
+      "--lead", String(lead ?? 5),
+      "--tail", String(tail ?? 5),
+    ]);
+    effectiveManifest = condensedPath;
+    // narasi.txt final = hasil kondensasi (bukan narasi analisis penuh).
+    const condensed = JSON.parse(await fsp.readFile(condensedPath, "utf8"));
+    await fsp.writeFile(
+      path.join(job.dir, "narasi.txt"),
+      condensed.scenes.map((s) => s.narration_text).join("\n") + "\n",
+      "utf8",
+    );
+    pushLog(job, `[condense] ${condensed.scenes.length}/${originalSceneCount} scene dipertahankan, target ±${targetSeconds}s -> manifest_condensed.json`);
+  }
+
   // 2. TTS SEKALI untuk seluruh manifest (audiocpp_cli, batch OmniVoice, GPU) --
   // Model di-load satu sesi untuk semua scene — jauh lebih cepat daripada
   // N sesi per part. Split dilakukan SETELAH TTS supaya batas part dihitung
@@ -263,7 +318,7 @@ async function runPipeline(job, input) {
   const fullNarrationJson = path.join(job.dir, "narration_audiocpp_natural.json");
   const ttsArgs = [
     CFG.ttsScript,
-    "--manifest", manifestPath,
+    "--manifest", effectiveManifest,
     "--ref-audio", CFG.refAudio,
     "--ref-text", CFG.refText,
     "--output", fullNarrationWav,
@@ -286,7 +341,7 @@ async function runPipeline(job, input) {
     pushStatus(job, "running", "split");
     const partsDir = path.join(job.dir, "parts");
     const splitArgs = [
-      manifestPath, partsDir, String(parts || 0),
+      effectiveManifest, partsDir, String(parts || 0),
       "--narration", fullNarrationJson,
     ];
     if (minutesPerPart > 0) splitArgs.push("--minutes", String(minutesPerPart));
@@ -357,7 +412,7 @@ async function runPipeline(job, input) {
           "--height", "1920",
         ], {
           cwd: CFG.tscapsExamples,
-          env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome },
+          env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome, PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath },
         });
         pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
         job.artifacts.push({ name: rel(finalCaptioned), path: finalCaptioned, kind: "video" });
@@ -471,8 +526,9 @@ const server = http.createServer(async (req, res) => {
       lead: input.lead !== undefined ? Number(input.lead) : 5,
       tail: input.tail !== undefined ? Number(input.tail) : 5,
       outputMode: input.outputMode === "auto" || input.outputMode === "manual" ? input.outputMode : "one",
-      parts: input.parts !== undefined ? Number(input.parts) : 0,
-      minutesPerPart: Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : 2,
+      parts: input.parts !== undefined ? Number(input.parts) : (Number(process.env.M2S_PARTS) > 0 ? Number(process.env.M2S_PARTS) : 0),
+      minutesPerPart: Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : (Number(process.env.M2S_MINUTES_PER_PART) > 0 ? Number(process.env.M2S_MINUTES_PER_PART) : 2),
+      targetMinutes: Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0,
     };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, jobId: job.id }));
@@ -510,7 +566,7 @@ const server = http.createServer(async (req, res) => {
   // --- API: daftar template tscaps ----------------------------------------------
   if (pathname === "/api/templates" && req.method === "GET") {
     try {
-      const tplDir = path.join(CFG.tscapsExamples, "..", "..", "..", "templates");
+      const tplDir = CFG.tscapsTemplates;
       const entries = await fsp.readdir(tplDir, { withFileTypes: true });
       const templates = [];
       for (const e of entries) {

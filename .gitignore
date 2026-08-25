@@ -16,6 +16,7 @@ whisper/ggml-*
 whisper/models/
 *.bin
 models/
+sandbox/
 
 # Secrets — JANGAN pernah commit .env (berisi GEMINI_API_KEY dll)
 .env

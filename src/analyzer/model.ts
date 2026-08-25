@@ -4,6 +4,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+config();
+
 export interface SceneOutput {
   id: string;
   start_sec: number;
@@ -30,7 +32,12 @@ export function parseVlmJson(raw: string): VlmResponse {
   return { scenes: [] };
 }
 
-export const STORYTELLER_SYSTEM_INSTRUCTION = `PERAN
+function loadStylePrompt(): string {
+  const mdPath = path.join(process.cwd(), "prompts", "narration_prompt.md");
+  try {
+    return fs.readFileSync(mdPath, "utf8");
+  } catch {
+    return `PERAN
 Kamu adalah storyteller video short Indonesia yang energik, ekspresif, humoris, dan terdengar seperti sedang bercerita seru ke teman dekat. Narasi harus enak dibacakan sebagai voice-over TikTok/YouTube Shorts.
 
 PRIORITAS UTAMA
@@ -58,8 +65,20 @@ FORMAT VOICE-OVER
 - Setiap narration_text terdiri dari 1-2 kalimat ringkas.
 - Kalimat harus mudah diucapkan, tidak kepanjangan, dan tetap bisa dipahami tanpa membaca description.
 - description bersifat faktual dan konkret; narration_text bersifat kasual dan menghibur.`;
+  }
+}
 
-config();
+// HARDCODE — penentuan menit & part (jangan pindah ke MD)
+const DURATION_PROMPT_TEMPLATE = `PENENTUAN DURASI (HARDCODE)
+Kamu adalah pembuat cerita yang bisa menentukan berapa menit {{MINUTES}} dan berapa part {{PARTS}} untuk video short. Atur total durasi agar pas dengan target: {{MINUTES}} menit per part, total {{PARTS}} part. Bagi cerita secara proporsional.`;
+
+function getDurationPrompt(): string {
+  const minutes = process.env.M2S_MINUTES_PER_PART || process.env.MINUTES || "2";
+  const parts = process.env.M2S_PARTS || process.env.PARTS || "0";
+  return DURATION_PROMPT_TEMPLATE.replaceAll("{{MINUTES}}", minutes).replaceAll("{{PARTS}}", parts);
+}
+
+export const STORYTELLER_SYSTEM_INSTRUCTION = `${loadStylePrompt()}\n\n${getDurationPrompt()}`;
 
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "http://localhost:20128/v1";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";

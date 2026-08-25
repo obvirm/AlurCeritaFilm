@@ -128,6 +128,7 @@ export function StartDialog({
   const [chunk, setChunk] = useState<boolean>(true);
   const [parts, setParts] = useState<number>(3);
   const [minutesPerPart, setMinutesPerPart] = useState<number>(2);
+  const [targetMinutes, setTargetMinutes] = useState<number>(2);
   const [stretch, setStretch] = useState<number>(0);
   const [hzoom, setHzoom] = useState<number>(1);
   const [cameraPlan, setCameraPlan] = useState<boolean>(false);
@@ -247,7 +248,7 @@ export function StartDialog({
   const handleGenerateShort = () => {
     if (!movie2short) return;
     const opts: Movie2ShortOptions = {
-      model, template, outputMode, chunk, parts, minutesPerPart,
+      model, template, outputMode, chunk, parts, minutesPerPart, targetMinutes,
       stretch, hzoom, cameraPlan, lead, tail,
     };
     void movie2short.execute(opts);
@@ -390,6 +391,26 @@ export function StartDialog({
                 <span className="block m-0 mt-1 text-xs text-fg-faint">
                   Jumlah part dihitung otomatis dari durasi narasi asli (TTS) —
                   panjang tiap part nyaris tepat sesuai target.
+                </span>
+              </label>
+            )}
+            {outputMode === 'one' && (
+              <label className="block mt-2">
+                <span className="text-sm text-fg-secondary">
+                  Rekap full-spoiler — {targetMinutes.toFixed(targetMinutes % 1 ? 1 : 0)} menit
+                </span>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={5}
+                  step={0.5}
+                  value={targetMinutes}
+                  onChange={(e) => setTargetMinutes(Number(e.target.value))}
+                  className="w-full accent-accent mt-1"
+                />
+                <span className="block m-0 mt-1 text-xs text-fg-faint">
+                  Seluruh cerita (sampai ending) dipadatkan jadi SATU short
+                  ±target durasi — scene kunci saja, timing visual mengikuti narasi.
                 </span>
               </label>
             )}

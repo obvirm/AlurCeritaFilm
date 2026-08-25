@@ -52,7 +52,7 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.0",
     "@tanstack/react-virtual": "^3.10.0",
-    "@tscaps/engine": "file:../../tscaps/packages/engine",
+    "@tscaps/engine": "file:../sandbox/tscaps-engine",
     "@uiw/react-codemirror": "^4.23.0",
     "lucide-react": "^1.11.0",
     "mediabunny": "^1.45.2",

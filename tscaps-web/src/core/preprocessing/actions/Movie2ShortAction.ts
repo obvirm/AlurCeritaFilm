@@ -25,6 +25,8 @@ export interface Movie2ShortOptions {
   readonly parts: number;
   /** Target menit per part (dipakai saat outputMode = 'auto'). */
   readonly minutesPerPart: number;
+  /** Target durasi rekap full-spoiler dalam menit (dipakai saat outputMode = 'one'). */
+  readonly targetMinutes?: number;
   readonly stretch: number;
   readonly hzoom: number;
   readonly cameraPlan: boolean;
@@ -204,6 +206,7 @@ export class Movie2ShortAction {
         chunk: options.chunk,
         parts: options.parts,
         minutesPerPart: options.minutesPerPart,
+        targetMinutes: options.targetMinutes,
         stretch: options.stretch,
         hzoom: options.hzoom,
         cameraPlan: options.cameraPlan,
@@ -227,6 +230,7 @@ export class Movie2ShortAction {
   private async pollPipeline(jobId: string): Promise<PipelineJobArtifact[]> {
     const STAGE_INFO: Record<string, { pct: number; label: string }> = {
       analysis: { pct: 0.2, label: 'Menganalisis video…' },
+      condense: { pct: 0.35, label: 'Memadatkan cerita ke target durasi…' },
       tts: { pct: 0.45, label: 'Synthesizing narasi…' },
       split: { pct: 0.6, label: 'Membagi part…' },
       render: { pct: 0.7, label: 'Rendering video…' },
