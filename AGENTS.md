@@ -11,6 +11,17 @@
 2. **Synthesizer** (`src/synthesizer`): Memproses manifest dan narasi menjadi struktur siap render.
 3. **Renderer** (`src/renderer`): Menggabungkan hasil (visual dan audio) menggunakan FFmpeg untuk menghasilkan video final (`final_short.mp4`).
 
+## Aturan Sandbox & End to End (WAJIB)
+1. **100% di dalam repo** — semua model & binary ada di `sandbox/` dan `models/` di dalam `movie2short`. DILARANG referensi keluar ke `E:\project\tscaps`, `D:\audio-cpp-lowend-gpu`, atau `C:\Program Files\`.
+   - Audio C++: `sandbox/audio-cpp/bin/audiocpp_cli.exe` + `sandbox/audio-cpp/model_specs` + `models/OmniVoice`
+   - Chromium: `sandbox/chromium/chromium-*/chrome-win64/chrome.exe` via `PLAYWRIGHT_BROWSERS_PATH=sandbox/chromium`
+   - Templates: `sandbox/templates/loki` (copy dari tscaps, dengan font Komika Axis base64)
+2. **End to end = one shot via server** — `POST /api/run` dengan `outputMode=one` langsung jadi `final_captioned_loki.mp4` tanpa manual `node cli/...` pakai `$env`.
+3. **ROM:**
+   - Gaya narasi (editable) → `prompts/narration_prompt.md` (MD)
+   - Penentuan menit/part (hardcode) → `src/analyzer/model.ts` hardcode `PENENTUAN DURASI {{MINUTES}}/{{PARTS}}` di-inject dari `.env` `M2S_MINUTES_PER_PART`/`M2S_PARTS`
+   - TTS voice cloning (mp3) → variabel `TTS_VOICE` terpisah, bukan di ROM
+
 ## API & Model (OpenAI Compatible)
 - **Konfigurasi Utama**: 100% diatur melalui file `.env`.
 - Semua koneksi AI menggunakan standar **OpenAI Compatible API** (terpusat di `model.ts`). File legacy khusus vendor tertentu sudah dihapus.
@@ -37,8 +48,8 @@ npx tsx src/index.ts --video "C:\Users\X\Downloads\getvid.mp4"
 - Eksperimen visual anchor (`visual_start_sec/visual_end_sec`) dan crop-awal sudah di-revert. Jangan dipasang ulang tanpa perintah user.
 
 ## TTS Runtime (audio.cpp - pure C++)
-- Orkestrasi Node: `node tools/audiocpp_manifest_tts.mjs --manifest <m.json> --ref-audio data\reference\test_snippet.wav --ref-text data\reference\test_snippet.txt --output <n.wav>`
-- Default: `audiocpp_cli.exe` menggunakan snapshot `k2-fsa/OmniVoice`, backend `cuda`.
+- Orkestrasi Node: `node tools/audiocpp_manifest_tts.mjs --manifest <m.json> --ref-audio data\reference\test_snippet.wav --ref-text data\reference\test_snippet.txt --output <n.wav>` (otomatis chunked `AUDIOCPP_BATCH_SIZE=4` biar RAM aman)
+- Binary & model **wajib sandbox**: `sandbox/audio-cpp/bin/audiocpp_cli.exe` + `models/OmniVoice`, backend `cuda`.
 - Narasi berfungsi sebagai master timeline saat digabungkan dengan video final.
 
 ## Frontend Preview (tscaps-web)

@@ -64,8 +64,8 @@ const CFG = {
   refAudio: path.join(ROOT, "data", "reference", "test_snippet.wav"),
   refText: path.join(ROOT, "data", "reference", "test_snippet.txt"),
   // tscaps (headless caption via Playwright + Chrome — sandbox di repo)
-  tscapsExamples: process.env.TSCAPS_EXAMPLES_DIR || path.join(ROOT, "sandbox", "tscaps-engine", "examples"),
-  tscapsTemplates: process.env.TSCAPS_TEMPLATES_DIR || path.join(ROOT, "sandbox", "templates"),
+  tscapsExamples: process.env.TSCAPS_EXAMPLES_DIR || path.resolve(ROOT, "..", "tscaps", "packages", "engine", "examples"),
+  tscapsTemplates: process.env.TSCAPS_TEMPLATES_DIR || path.resolve(ROOT, "..", "tscaps", "templates"),
   tscapsChrome: process.env.TSCAPS_CHROME_PATH || (() => {
     const base = path.join(ROOT, "sandbox", "chromium");
     try {
