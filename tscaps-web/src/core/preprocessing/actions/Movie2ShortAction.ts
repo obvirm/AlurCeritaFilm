@@ -25,6 +25,8 @@ export interface Movie2ShortOptions {
   readonly parts: number;
   /** Target menit per part (dipakai saat outputMode = 'auto'). */
   readonly minutesPerPart: number;
+  /** BGM file path relatif ke repo (public/bgm/...) atau undefined untuk tanpa BGM. */
+  readonly bgm?: string | undefined;
   /** Target durasi rekap full-spoiler dalam menit (dipakai saat outputMode = 'one'). */
   readonly targetMinutes?: number;
   readonly stretch: number;
@@ -206,12 +208,12 @@ export class Movie2ShortAction {
         chunk: options.chunk,
         parts: options.parts,
         minutesPerPart: options.minutesPerPart,
-        targetMinutes: options.targetMinutes,
         stretch: options.stretch,
         hzoom: options.hzoom,
         cameraPlan: options.cameraPlan,
         lead: options.lead,
         tail: options.tail,
+        bgm: options.bgm,
         caption: true,
         template: options.template,
       }),

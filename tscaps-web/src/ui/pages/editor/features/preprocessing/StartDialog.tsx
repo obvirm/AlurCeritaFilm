@@ -134,6 +134,8 @@ export function StartDialog({
   const [cameraPlan, setCameraPlan] = useState<boolean>(false);
   const [lead, setLead] = useState<number>(5);
   const [tail, setTail] = useState<number>(5);
+  const [bgm, setBgm] = useState<string>("01. Novial Music - Into the Abyss.flac");
+  const [bgmEnabled, setBgmEnabled] = useState<boolean>(true);
   const [restoreJobId, setRestoreJobId] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const engine = useEngine();
@@ -248,8 +250,9 @@ export function StartDialog({
   const handleGenerateShort = () => {
     if (!movie2short) return;
     const opts: Movie2ShortOptions = {
-      model, template, outputMode, chunk, parts, minutesPerPart, targetMinutes,
+      model, template, outputMode, chunk, parts, minutesPerPart,
       stretch, hzoom, cameraPlan, lead, tail,
+      bgm: bgmEnabled ? `public/bgm/${bgm}` : undefined,
     };
     void movie2short.execute(opts);
   };
@@ -448,6 +451,24 @@ export function StartDialog({
               className="w-full accent-accent mt-1"
             />
           </label>
+          <label className="flex items-center gap-2 text-sm text-fg-secondary">
+            <input
+              type="checkbox"
+              checked={bgmEnabled}
+              onChange={(e) => setBgmEnabled(e.target.checked)}
+              className="accent-accent size-4"
+            />
+            BGM — {bgmEnabled ? bgm : "OFF"}
+          </label>
+          {bgmEnabled && (
+            <select
+              value={bgm}
+              onChange={(e) => setBgm(e.target.value)}
+              className="w-full mt-1 rounded-xs border border-fg-muted/30 bg-surface-2 px-2 py-1 text-xs text-fg-secondary"
+            >
+              <option value="01. Novial Music - Into the Abyss.flac">Into the Abyss (Novial)</option>
+            </select>
+          )}
           <label className="flex items-center gap-2 text-sm text-fg-secondary">
             <input
               type="checkbox"

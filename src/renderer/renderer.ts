@@ -22,12 +22,14 @@ export async function renderShortVideo(
   sceneDurationsPath?: string,
   cameraPlanPath?: string,
   stretchRatio?: number,
-  hZoomRatio?: number
+  hZoomRatio?: number,
+  bgmPath?: string
 ) {
   const absManifest = path.resolve(manifestPath);
   const absOutput = path.resolve(outputMp4Path);
   const actualVideoPath = path.resolve(videoPath);
   const actualNarrationPath = narrationAudioPath ? path.resolve(narrationAudioPath) : undefined;
+  const actualBgmPath = bgmPath ? path.resolve(bgmPath) : undefined;
   const sceneDurationsData = sceneDurationsPath
     ? JSON.parse(await fs.readFile(path.resolve(sceneDurationsPath), 'utf8'))
     : undefined;
@@ -39,6 +41,7 @@ export async function renderShortVideo(
 
   console.log(`       Video source: ${actualVideoPath}`);
   if (actualNarrationPath) console.log(`       Narration: ${actualNarrationPath}`);
+  if (actualBgmPath) console.log(`       BGM: ${actualBgmPath}`);
   if (sceneDurations) console.log(`       Per-scene narration durations: ${sceneDurationsPath}`);
   if (cameraPlan) console.log(`       Camera plan (director): ${cameraPlanPath} (${cameraPlan.length} scene)`);
 
@@ -184,13 +187,27 @@ export async function renderShortVideo(
 
   // The source clips are already silent. Map only the OmniVoice input as audio,
   // so original video audio and music can never enter the final output.
+  // Jika BGM ada, mix dengan narasi (BGM di-loop, volume rendah).
+  let bgmAvailable = false;
+  if (actualBgmPath) {
+    try { await fs.access(actualBgmPath); bgmAvailable = true; } catch { bgmAvailable = false; }
+  }
   if (actualNarrationPath) {
     await fs.access(actualNarrationPath);
-    const muxCmd = `ffmpeg -y -i "${silentVideoPath}" -i "${actualNarrationPath}" -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -ar 48000 -ac 1 -shortest -movflags +faststart "${absOutput}"`;
-    try {
-      await execAsync(muxCmd, { maxBuffer: 1024 * 1024 * 10, timeout: 120000 });
-    } catch (e: any) {
-      throw new Error(`Narration mux failed: ${e.message}`);
+    if (bgmAvailable) {
+      const muxCmd = `ffmpeg -y -i "${silentVideoPath}" -i "${actualNarrationPath}" -stream_loop -1 -i "${actualBgmPath}" -filter_complex "[1:a]aformat=channel_layouts=stereo[voice];[2:a]aformat=channel_layouts=stereo,volume=0.12,aresample=48000[bgm];[voice][bgm]amix=inputs=2:duration=shortest:dropout_transition=0:normalize=0[mix]" -map 0:v:0 -map "[mix]" -c:v copy -c:a aac -b:a 192k -ar 48000 -ac 2 -shortest -movflags +faststart "${absOutput}"`;
+      try {
+        await execAsync(muxCmd, { maxBuffer: 1024 * 1024 * 10, timeout: 120000 });
+      } catch (e: any) {
+        throw new Error(`Narration+BGM mux failed: ${e.message}`);
+      }
+    } else {
+      const muxCmd = `ffmpeg -y -i "${silentVideoPath}" -i "${actualNarrationPath}" -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -ar 48000 -ac 1 -shortest -movflags +faststart "${absOutput}"`;
+      try {
+        await execAsync(muxCmd, { maxBuffer: 1024 * 1024 * 10, timeout: 120000 });
+      } catch (e: any) {
+        throw new Error(`Narration mux failed: ${e.message}`);
+      }
     }
   }
 

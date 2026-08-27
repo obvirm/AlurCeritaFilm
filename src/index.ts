@@ -40,6 +40,9 @@ async function main() {
       },
       hzoom: {
         type: 'string' // >1 — potong sisi kiri-kanan agar karakter terlihat lebih lebar (mis. 1.15)
+      },
+      bgm: {
+        type: 'string' // Optional BGM track (flac/mp3/wav) untuk di-mix dengan narasi
       }
     },
     allowPositionals: true
@@ -108,7 +111,8 @@ async function main() {
       values['scene-durations'] ? path.resolve(values['scene-durations']) : undefined,
       values['camera-plan'] ? path.resolve(values['camera-plan']) : undefined,
       values.stretch !== undefined ? Number(values.stretch) : undefined,
-      values.hzoom !== undefined ? Number(values.hzoom) : undefined
+      values.hzoom !== undefined ? Number(values.hzoom) : undefined,
+      values.bgm ? path.resolve(values.bgm) : undefined
     );
     return;
   }
@@ -148,7 +152,8 @@ async function main() {
       values['scene-durations'] ? path.resolve(values['scene-durations']) : undefined,
       values['camera-plan'] ? path.resolve(values['camera-plan']) : undefined,
       values.stretch !== undefined ? Number(values.stretch) : undefined,
-      values.hzoom !== undefined ? Number(values.hzoom) : undefined
+      values.hzoom !== undefined ? Number(values.hzoom) : undefined,
+      values.bgm ? path.resolve(values.bgm) : undefined
     );
     console.log(`- Final Video:  ${outputMp4}`);
     console.log(`- Narration:    ${path.join(outputDir, 'narasi.txt')}`);

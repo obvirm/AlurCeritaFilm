@@ -230,8 +230,10 @@ function runNode(job, label, script, args, opts = {}) {
 // Pipeline
 // ---------------------------------------------------------------------------
 async function runPipeline(job, input) {
-  const { videoPath, model, stretch, hzoom, caption, lead, tail, outputMode = "one", parts = 0 } = input;
+  const { videoPath, model, stretch, hzoom, caption, lead, tail, outputMode = "one", parts = 0, bgm } = input;
   const minutesPerPart = Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : (Number(process.env.M2S_MINUTES_PER_PART) > 0 ? Number(process.env.M2S_MINUTES_PER_PART) : 2);
+  const defaultBgm = path.join(ROOT, "public", "bgm", "01. Novial Music - Into the Abyss.flac");
+  const bgmPath = bgm ? path.resolve(bgm) : (process.env.BGM_FILE ? path.resolve(process.env.BGM_FILE) : (fs.existsSync(defaultBgm) ? defaultBgm : undefined));
   // Rekap full-spoiler berdurasi target (menit -> detik). Hanya untuk mode
   // One Short; mode split sudah punya kontrol panjangnya sendiri (minutesPerPart).
   const rawTargetMinutes = Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0;
@@ -246,7 +248,7 @@ async function runPipeline(job, input) {
   pushLog(job, `Video  : ${videoPath}`);
   pushLog(job, `Model  : ${model}`);
   const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ${minutesPerPart} menit/part)` : "One Short";
-  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel}${recapLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
+  pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel}${recapLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | BGM: ${bgmPath ? path.basename(bgmPath) : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
 
   // 1. ANALYSIS -------------------------------------------------------------
   pushStatus(job, "running", "analysis");
@@ -389,6 +391,7 @@ async function runPipeline(job, input) {
     ];
     if (stretch !== undefined && stretch !== null) renderArgs.push("--stretch", String(stretch));
     if (hzoom !== undefined && hzoom !== null) renderArgs.push("--hzoom", String(hzoom));
+    if (bgmPath) renderArgs.push("--bgm", bgmPath);
     await runNode(job, `${partTag}RENDER FFMPEG`, "src/index.ts", renderArgs);
     pushLog(job, `${partTag}[render] selesai -> ${rel(finalShort)}`);
     job.artifacts.push({ name: rel(finalShort), path: finalShort, kind: "video" });
@@ -529,6 +532,7 @@ const server = http.createServer(async (req, res) => {
       parts: input.parts !== undefined ? Number(input.parts) : (Number(process.env.M2S_PARTS) > 0 ? Number(process.env.M2S_PARTS) : 0),
       minutesPerPart: Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : (Number(process.env.M2S_MINUTES_PER_PART) > 0 ? Number(process.env.M2S_MINUTES_PER_PART) : 2),
       targetMinutes: Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0,
+      bgm: input.bgm ? String(input.bgm) : undefined,
     };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, jobId: job.id }));
