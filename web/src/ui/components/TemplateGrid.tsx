@@ -131,8 +131,8 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                     className={hover ? "word word-being-narrated" : "word"}
                     style={
                       {
-                        ["--on-word-being-narrated-starts" as string]: hover ? `${i * 0.16}s` : "-10s",
-                        ["--word-being-narrated-duration" as string]: "0.45s",
+                        ["--on-word-being-narrated-starts" as string]: hover ? `${i * 0.22}s` : "-10s",
+                        ["--word-being-narrated-duration" as string]: "0.32s",
                       } as React.CSSProperties
                     }
                   >
