@@ -10,6 +10,19 @@ function colorsOf(t: TemplateMeta) {
   return { primary, highlight };
 }
 
+function scopeCss(css: string, tid: string): string {
+  const p = `[data-tid="${tid}"]`;
+  return css
+    .replaceAll(".segment", `${p} .segment`)
+    .replaceAll(".line", `${p} .line`)
+    .replaceAll(".word", `${p} .word`)
+    .replaceAll(".emphasis", `${p} .emphasis`)
+    .replaceAll(".accent", `${p} .accent`)
+    .replaceAll(".entity", `${p} .entity`)
+    .replaceAll(".quote", `${p} .quote`)
+    .replaceAll(".tscaps-", `${p} .tscaps-`);
+}
+
 const CHECKERED = "rgb(255 255 255 / 0.06)";
 const CHECK_BG: React.CSSProperties = {
   backgroundColor: "#0A0A0A",
@@ -34,7 +47,7 @@ export function TemplateGrid({
       {templates.map((t) => (
         <Cell key={t.id} template={t} active={t.id === selectedId} onSelect={onSelect} />
       ))}
-      <style>{`@keyframes captionPop{0%{transform:scale(0.94);opacity:0}60%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}`}</style>
+      <style>{`@keyframes thumbPop{0%{transform:scale(0.82);opacity:0}55%{transform:scale(1.12)}75%{transform:scale(0.96)}100%{transform:scale(1);opacity:1}}`}</style>
     </div>
   );
 }
@@ -42,6 +55,8 @@ export function TemplateGrid({
 function Cell({ template: t, active, onSelect }: { template: TemplateMeta; active: boolean; onSelect: (id: string) => void }) {
   const { primary, highlight } = colorsOf(t);
   const [hover, setHover] = useState(false);
+  // static = judul template (nama), hover = kuota 2-3 kata THIS IS TSCAPS biar highlight & animasi kepakai — luca fallback single biar tidak blank
+  const words = hover ? (t.id === "luca" ? ["Luca"] : ["THIS", "IS", "TSCAPS"]) : [t.name || t.id];
   const [scale, setScale] = useState(1);
   const previewRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -78,32 +93,45 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
       }`}
       aria-label={t.name || t.id}
     >
-      <div ref={previewRef} className="relative flex aspect-[4/2] w-full items-center justify-center overflow-hidden p-2" style={CHECK_BG}>
-        {t.css ? <style>{t.css}</style> : null}
-        {/* virtual video 720x1280 biar cqh jalan — scale via fitScale */}
+      <div ref={previewRef} data-tid={t.id} className="relative flex aspect-[4/2] w-full items-center justify-center overflow-hidden p-2" style={CHECK_BG}>
+        {t.css ? <style>{scopeCss(t.css, t.id)}</style> : null}
+        {/* virtual video 720x1280 biar cqh jalan — container-type:size agar cqh valid per thumb */}
         <div
           className="flex items-center justify-center"
-          style={{
-            width: 720,
-            height: 1280,
-            flexShrink: 0,
-            transform: `scale(${scale})`,
-            transformOrigin: "center",
-          }}
+          style={
+            {
+              width: 720,
+              height: 1280,
+              flexShrink: 0,
+              transform: `scale(${scale})`,
+              transformOrigin: "center",
+              containerType: "size",
+            } as React.CSSProperties
+          }
         >
           <div ref={contentRef} style={{ width: "max-content" } as React.CSSProperties}>
-            <div
-              className="segment flex items-center justify-center"
+            <div key={hover ? "hov" : "idle"} className="segment flex items-center justify-center"
               style={
                 {
                   // inject primary/highlight biar static sesuai template, bukan putih generik
                   ["--tscaps-primary-color" as string]: primary,
                   ["--tscaps-highlight-color" as string]: highlight,
+                  // kuota 2-3 kata biar highlight & line wrapping kepakai — THIS IS TSCAPS (14 chars), fallback single untuk luca/naya yang blank
+                  ["--segment-char-count" as string]: String(words.join(" ").length),
+                  ["--m2s-ctl-dynamic-font-size" as string]: "12",
+                  // trigger animasi bawaan template pas hover — di luar hover, pakai delay negatif biar sudah selesai (static visible)
+                  ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
+                  ["--on-word-being-narrated-starts" as string]: hover ? "0s" : "-10s",
+                  ["--word-being-narrated-duration" as string]: "0.6s",
                 } as React.CSSProperties
               }
             >
               <div className="line">
-                <span className={hover ? "word word-being-narrated" : "word"}>{t.name || t.id}</span>
+                {words.map((w, i) => (
+                  <span key={i} className={words.length === 3 && i === 1 ? "word word-being-narrated" : "word"}>
+                    {w}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

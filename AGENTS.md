@@ -61,6 +61,8 @@ npx tsx src/index.ts --video "C:\Users\X\Downloads\getvid.mp4"
   - Kalau kerja frontend nemu bug/error yang akarnya di backend (misal API nggak balikin data, endpoint kurang, CSS caption kosong), **STOP** — laporkan ke user, jangan benerin pipeline backend sendiri.
 - Kalau frontend butuh endpoint/perubahan API baru, tanya dulu & tunggu konfirmasi eksplisit sebelum ubah backend.
   - Pengecualian: HANYA ubah backend kalau user minta eksplisit ("benerin backend", "tambah endpoint", dst).
+- **JANGAN OVER-ENGINEERING.** Jangan nambah fitur/UI/komponen yang user tidak minta. PRINSIP: YAGNI — kerjakan tepat yang diminta, tidak lebih. Contoh pelanggaran: user cuma minta fix grid thumb, jangan sekalian nambah panel detail `css — first 800 chars` + `template.json` + `iframe preview` di `web/src/ui/pages/Templates.tsx:56`. Kalau mau nambah, tanya dulu & tunggu `ok` eksplisit.
+- **Harus berimajinasi tapi jangan over-engineering.** Saat bikin contoh/sample jangan cuma `1 kata` (`Tito` doang) — kasih kuota `2-3 kata` biar kepakai `highlight` & `line` wrapping, misal `THIS IS TSCAPS` / `THIS IS TEMPLATE` / `ini adalah caption`. Thinking imaginative untuk konten, bukan untuk nambah arsitektur.
 - **Jangan commit/push tanpa perintah eksplisit user.**
 - **Jangan eksekusi perintah destruktif git** (`git reset --hard`, `git clean`, `git checkout -- .`) tanpa jelasin dulu situasinya dan dapet arahan user.
 - **Thinking kelamaan = kabari user.** Kalau analisis/eksekusi lama, kasih update progress dulu, jangan diam.
