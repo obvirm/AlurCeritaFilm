@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface-0: #000000;
+  --surface-1: #0a0a0a;
+  --surface-2: #1a1a1a;
+  --surface-3: #27272a;
+  --brand: #b6ff3b;
+  --brand-hover: #9ae600;
+  --brand-dark: #7ccf00;
+  --brand-muted: rgba(182, 255, 59, 0.12);
+  --text-primary: #f5f5f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border: #27272a;
+  --card: #0a0a0a;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="light"] {
+  --surface-0: #f6fdf6;
+  --surface-1: #ffffff;
+  --surface-2: #e8f5e8;
+  --surface-3: #d1e7d1;
+  --text-primary: #0a1f0a;
+  --text-secondary: #3a5a3e;
+  --border: #c8e6c8;
+  --card: #ffffff;
+}
+
+[data-theme="light"] body {
+  background: var(--surface-0);
+  color: var(--text-primary);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Opus Clip inspired utilities */
+.opus-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: all 0.2s;
+}
+.opus-card:hover {
+  border-color: rgba(182, 255, 59, 0.3);
+  transform: translateY(-1px);
+}
+.opus-gradient {
+  background: linear-gradient(135deg, #b6ff3b 0%, #00d492 100%);
+}
+.opus-glow {
+  box-shadow: 0 0 20px rgba(182, 255, 59, 0.15);
+}

@@ -1,0 +1,238 @@
+import { useEffect, useRef, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { cancelJob, connectJobWS, fileUrl, getJob, getJobLog, type Job, type JobLogEntry } from "@/app/api/client";
+import { LogViewer } from "@/ui/components/LogViewer";
+import { VideoPlayer } from "@/ui/components/VideoPlayer";
+import { ArtifactList } from "@/ui/components/ArtifactList";
+import { StatusBadge, StageBadge } from "@/ui/components/StatusBadge";
+import { AlertCircle, ArrowLeft, Ban, Loader2, RefreshCw, Download, Sparkles } from "lucide-react";
+
+export function JobDetail() {
+  const { id } = useParams<{ id: string }>();
+  const [job, setJob] = useState<Job | null>(null);
+  const [logs, setLogs] = useState<JobLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const logsRef = useRef<JobLogEntry[]>([]);
+
+  const fetchAll = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const [j, l] = await Promise.all([getJob(id), getJobLog(id)]);
+      setJob(j);
+      setLogs(l);
+      logsRef.current = l;
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !job) return;
+    if (job.status !== "running" && job.status !== "queued") return;
+
+    const unsub = connectJobWS(id, {
+      onLog: (entry) => {
+        logsRef.current = [...logsRef.current, entry];
+        setLogs([...logsRef.current]);
+      },
+      onStatus: (status, stage) => {
+        setJob((prev) => (prev ? { ...prev, status, stage } : prev));
+        if (status === "done" || status === "error" || status === "cancelled") {
+          getJob(id).then(setJob).catch(() => {});
+        }
+      },
+      onOpen: () => setWsConnected(true),
+      onClose: () => setWsConnected(false),
+    });
+
+    const poll = setInterval(() => {
+      getJob(id)
+        .then((j) => {
+          setJob(j);
+          if (j.status === "done" || j.status === "error" || j.status === "cancelled") {
+            getJobLog(id)
+              .then((l) => {
+                logsRef.current = l;
+                setLogs(l);
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 4000);
+
+    return () => {
+      unsub();
+      clearInterval(poll);
+    };
+  }, [id, job?.status]);
+
+  const handleCancel = async () => {
+    if (!id) return;
+    try {
+      await cancelJob(id);
+      await fetchAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  if (loading && !job) {
+    return (
+      <div className="flex items-center gap-2 rounded-2xl bg-[#0A0A0A] border border-[#27272A] p-6 text-sm text-[#a1a1aa]">
+        <Loader2 className="h-4 w-4 animate-spin text-[#B6FF3B]" /> Memuat clip…
+      </div>
+    );
+  }
+
+  if (error && !job) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-2xl border border-red-900 bg-red-950 p-4 text-sm text-red-300">
+          <AlertCircle className="h-4 w-4" /> {error}
+        </div>
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-[#B6FF3B]">
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  if (!job || !id) return null;
+
+  const videoArtifacts = job.artifacts.filter((a) => a.kind === "video");
+  const primaryVideo = videoArtifacts.find((a) => a.name.includes("final_captioned")) || videoArtifacts[0] || null;
+  const srtArtifact = job.artifacts.find((a) => a.kind === "srt" || a.name.endsWith(".srt"));
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#a1a1aa] hover:text-white">
+          <ArrowLeft className="h-4 w-4" /> Dashboard
+        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchAll}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#0A0A0A] border border-[#27272A] px-3 py-1.5 text-xs font-semibold text-[#a1a1aa] hover:bg-[#1A1A1A] hover:text-white"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </button>
+          {(job.status === "running" || job.status === "queued") && (
+            <button
+              onClick={handleCancel}
+              className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white hover:bg-red-700"
+            >
+              <Ban className="h-3.5 w-3.5" /> Cancel
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-[20px] bg-[#0A0A0A] border border-[#27272A] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#B6FF3B] text-black">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <h1 className="truncate font-mono text-sm font-black text-white">{job.id}</h1>
+            </div>
+            <p className="mt-1 text-xs text-[#a1a1aa]">
+              Dibuat {new Date(job.createdAt).toLocaleString()} {job.finishedAt ? `· Selesai ${new Date(job.finishedAt).toLocaleString()}` : ""}{" "}
+              <span className={wsConnected ? "text-[#B6FF3B]" : "text-[#71717a]"}>· {wsConnected ? "WS live" : "WS offline (polling)"}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={job.status} stage={job.stage} />
+            <StageBadge stage={job.stage} />
+          </div>
+        </div>
+        {job.error && <div className="mt-3 rounded-xl bg-red-950 border border-red-900 p-3 text-sm text-red-300">{job.error}</div>}
+        {job.status === "running" && <p className="mt-2 text-xs text-amber-400">Pipeline berjalan. Jangan tutup tab — log streaming via WS.</p>}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="space-y-4 lg:col-span-3">
+          {primaryVideo ? (
+            <div className="space-y-3">
+              <div className="rounded-[20px] overflow-hidden bg-black border border-[#27272A] p-2">
+                <VideoPlayer src={fileUrl(id, primaryVideo.name)} className="aspect-[9/16] max-h-[720px] mx-auto w-full max-w-[360px] rounded-xl overflow-hidden" />
+              </div>
+              <p className="text-center text-xs text-[#71717a]">
+                {primaryVideo.name} · <code className="rounded bg-[#0A0A0A] border border-[#27272A] px-1 py-0.5 text-[#a1a1aa]">/files/{id}/{primaryVideo.name}</code>
+              </p>
+              {videoArtifacts.length > 1 && (
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {videoArtifacts.map((v) => (
+                    <a
+                      key={v.name}
+                      href={fileUrl(id, v.name)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                        v.name === primaryVideo.name ? "border-[#B6FF3B] bg-[#B6FF3B] text-black" : "border-[#27272A] bg-[#0A0A0A] text-[#a1a1aa] hover:border-[#B6FF3B]/30"
+                      }`}
+                    >
+                      {v.name}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex aspect-[9/16] max-h-[520px] items-center justify-center rounded-[20px] border border-dashed border-[#27272A] bg-[#0A0A0A] text-sm text-[#a1a1aa]">
+              {job.status === "done" ? "Tidak ada video. Cek log untuk error render/caption." : "Video akan muncul setelah stage render."}
+            </div>
+          )}
+
+          {srtArtifact && (
+            <a
+              href={fileUrl(id, srtArtifact.name)}
+              download
+              className="inline-flex items-center gap-2 rounded-xl bg-[#B6FF3B] px-4 py-2 text-sm font-black text-black hover:bg-[#9AE600]"
+            >
+              <Download className="h-4 w-4" /> Download SRT {srtArtifact.name}
+            </a>
+          )}
+        </div>
+
+        <div className="space-y-4 lg:col-span-2">
+          <div className="rounded-[20px] bg-[#0A0A0A] border border-[#27272A] p-4">
+            <h2 className="mb-2 text-sm font-black text-white flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#B6FF3B] animate-pulse" /> Live Log
+            </h2>
+            <LogViewer logs={logs} />
+            <p className="mt-2 text-xs text-[#71717a]">{logs.length} baris · cap 4000</p>
+          </div>
+
+          <div className="rounded-[20px] bg-[#0A0A0A] border border-[#27272A] p-4">
+            <h2 className="mb-2 text-sm font-black text-white">Artifacts ({job.artifacts.length})</h2>
+            <ArtifactList jobId={id} artifacts={job.artifacts} />
+          </div>
+
+          <div className="rounded-[20px] bg-[#0A0A0A] border border-[#27272A] p-4">
+            <h3 className="text-sm font-black text-white">Tips</h3>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-[#a1a1aa]">
+              <li>Seek video besar pakai Range — tidak perlu download penuh.</li>
+              <li>Jika caption gagal, fallback `final_short.mp4` tetap ada.</li>
+              <li>
+                Path: <code className="rounded bg-[#000000] border border-[#27272A] px-1">data/output/jobs/{id}</code>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

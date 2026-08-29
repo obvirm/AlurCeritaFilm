@@ -48,6 +48,8 @@ temp_e829622_vlm.ts
 
 # Build frontend
 tscaps-web/dist/
+web/dist/
+web/node_modules/
 
 # Output pipeline di root
 output_getvid/

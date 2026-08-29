@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev:ui": "node server/server.mjs",
-    "build:ui": "cd tscaps-web && npm install && npm run build"
+    "dev:web": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "build:ui": "npm --prefix web run build",
+    "preview:web": "npm --prefix web run preview"
   },
   "keywords": [],
   "author": "",

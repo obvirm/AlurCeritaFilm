@@ -56,6 +56,15 @@ npx tsx src/index.ts --video "C:\Users\X\Downloads\getvid.mp4"
 - Frontend React HANYA berfungsi menampilkan hasil akhir dan UI dasar. Segala logika dan konfigurasi model diatur oleh Backend (`.env`).
 - Menyimpan referensi preview di IndexedDB agar persisten saat di-refresh.
 
+## Aturan Kerja (WAJIB)
+- **JANGAN SENTUH BACKEND KALAU USER CUMA MINTA FRONTEND/UI.** Backend = `server/server.mjs`, `tscaps-renderer/*`, pipeline `templates/`, `@tscaps/engine`, `src/analyzer`, `src/synthesizer`, `src/renderer`, dan script build `tools/*`.
+  - Kalau kerja frontend nemu bug/error yang akarnya di backend (misal API nggak balikin data, endpoint kurang, CSS caption kosong), **STOP** — laporkan ke user, jangan benerin pipeline backend sendiri.
+- Kalau frontend butuh endpoint/perubahan API baru, tanya dulu & tunggu konfirmasi eksplisit sebelum ubah backend.
+  - Pengecualian: HANYA ubah backend kalau user minta eksplisit ("benerin backend", "tambah endpoint", dst).
+- **Jangan commit/push tanpa perintah eksplisit user.**
+- **Jangan eksekusi perintah destruktif git** (`git reset --hard`, `git clean`, `git checkout -- .`) tanpa jelasin dulu situasinya dan dapet arahan user.
+- **Thinking kelamaan = kabari user.** Kalau analisis/eksekusi lama, kasih update progress dulu, jangan diam.
+
 ## Known Issues / Env
 - C: drive mudah penuh (pagefile 16-30 GB; RAM host 31,8 GB sering jenuh). Bersihkan cache aman bila ruang sisa `0.x GB`.
 - Ollama kadang mati dan perlu restart (`Get-Process ollama* | Stop-Process -Force`, lalu `Start-Process ollama`).

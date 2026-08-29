@@ -710,22 +710,50 @@ const server = http.createServer(async (req, res) => {
   }
 
   // --- API: serve static frontend ----------------------------------------------
-  if (req.method === "GET") {
-    let filePath = path.join(ROOT, "tscaps-web", "dist", pathname === "/" ? "index.html" : pathname);
-    try {
-      const stat = fs.statSync(filePath);
-      if (stat.isDirectory()) {
-        filePath = path.join(filePath, "index.html");
-      }
-      const ext = path.extname(filePath).toLowerCase();
-      res.writeHead(200, { "content-type": MIME[ext] || "text/html" });
-      fs.createReadStream(filePath).pipe(res);
-      return;
-    } catch {
-      // Fallback to index.html for SPA routing
+  // Clean-room frontend: web/dist (Vite). Fallback ke tscaps-web/dist untuk kompat.
+  const FRONTEND_CANDIDATES = [
+    path.join(ROOT, "web", "dist"),
+    path.join(ROOT, "tscaps-web", "dist"),
+  ];
+  function resolveFrontendFile(requestPath) {
+    for (const base of FRONTEND_CANDIDATES) {
+      const p = path.join(base, requestPath === "/" ? "index.html" : requestPath);
       try {
-        const index = path.join(ROOT, "tscaps-web", "dist", "index.html");
-        fs.statSync(index);
+        const stat = fs.statSync(p);
+        if (stat.isDirectory()) {
+          const idx = path.join(p, "index.html");
+          fs.statSync(idx);
+          return idx;
+        }
+        return p;
+      } catch {}
+    }
+    return null;
+  }
+  function resolveFrontendIndex() {
+    for (const base of FRONTEND_CANDIDATES) {
+      const idx = path.join(base, "index.html");
+      try {
+        fs.statSync(idx);
+        return idx;
+      } catch {}
+    }
+    return null;
+  }
+  if (req.method === "GET") {
+    const filePath = resolveFrontendFile(pathname);
+    if (filePath) {
+      try {
+        const ext = path.extname(filePath).toLowerCase();
+        res.writeHead(200, { "content-type": MIME[ext] || "text/html" });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      } catch {}
+    }
+    // Fallback to index.html for SPA routing
+    const index = resolveFrontendIndex();
+    if (index) {
+      try {
         res.writeHead(200, { "content-type": "text/html" });
         fs.createReadStream(index).pipe(res);
         return;
