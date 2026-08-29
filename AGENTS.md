@@ -65,6 +65,13 @@ npx tsx src/index.ts --video "C:\Users\X\Downloads\getvid.mp4"
 - **Jangan eksekusi perintah destruktif git** (`git reset --hard`, `git clean`, `git checkout -- .`) tanpa jelasin dulu situasinya dan dapet arahan user.
 - **Thinking kelamaan = kabari user.** Kalau analisis/eksekusi lama, kasih update progress dulu, jangan diam.
 
+## Aturan Anti-Mereh (WAJIB — biar gak iya-iya & halusinasi)
+- **JANGAN jawab iya-iya tanpa bukti.** Tiap klaim `udah plek` wajib sertakan `file:line` + hasil `read`/screenshot — kalau belum baca, bilang `belum baca`.
+- **JANGAN nanya ulang hal yang user udah jawab 2x.** Catat `4:2 wide` `5 grid` `gap-3` `hitam #000/#0A0A0A + abu #1A1A1A/#27272A` `hijau #B6FF3B cuma border selected` `judul==caption` `thumb==kanvas 1:1` di `AGENTS.md` biar gak lupa.
+- **DI plan cuma boleh read/inspect — dilarang halusinasi `build sukses` kalau belum `npm --prefix web run build` + `curl /templates` 200.**
+- **DI build jangan eksekusi tanpa `ok` eksplisit user.** Tanya `ok plek atau putih?` sekali aja, kalau user bilang `sono kerjakan` baru tulis `web/src/ui/components/TemplateGrid.tsx:59`.
+- **TIAP thumb harus pakai `style.build.css` + `segment/line/word` + `fitScale 2.4` biar `selene` pill gak kecil — kalau masih `14px Inter` berarti belum sesuai template, jangan bilang sesuai.
+
 ## Known Issues / Env
 - C: drive mudah penuh (pagefile 16-30 GB; RAM host 31,8 GB sering jenuh). Bersihkan cache aman bila ruang sisa `0.x GB`.
 - Ollama kadang mati dan perlu restart (`Get-Process ollama* | Stop-Process -Force`, lalu `Start-Process ollama`).
