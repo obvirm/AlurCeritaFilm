@@ -116,19 +116,26 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   // inject primary/highlight biar static sesuai template, bukan putih generik
                   ["--tscaps-primary-color" as string]: primary,
                   ["--tscaps-highlight-color" as string]: highlight,
-                  // kuota 2-3 kata biar highlight & line wrapping kepakai — THIS IS TSCAPS (14 chars), fallback single untuk luca/naya yang blank
+                  // kuota 2-3 kata biar highlight & line wrapping kepakai — THIS IS TSCAPS (14 chars), fallback single untuk luca
                   ["--segment-char-count" as string]: String(words.join(" ").length),
                   ["--m2s-ctl-dynamic-font-size" as string]: "12",
-                  // trigger animasi bawaan template pas hover — di luar hover, pakai delay negatif biar sudah selesai (static visible)
+                  // trigger animasi bawaan template pas hover — di luar hover delay negatif biar static visible
                   ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
-                  ["--on-word-being-narrated-starts" as string]: hover ? "0s" : "-10s",
-                  ["--word-being-narrated-duration" as string]: "0.6s",
                 } as React.CSSProperties
               }
             >
               <div className="line">
                 {words.map((w, i) => (
-                  <span key={i} className={words.length === 3 && i === 1 ? "word word-being-narrated" : "word"}>
+                  <span
+                    key={i}
+                    className={hover ? "word word-being-narrated" : "word"}
+                    style={
+                      {
+                        ["--on-word-being-narrated-starts" as string]: hover ? `${i * 0.16}s` : "-10s",
+                        ["--word-being-narrated-duration" as string]: "0.45s",
+                      } as React.CSSProperties
+                    }
+                  >
                     {w}
                   </span>
                 ))}
