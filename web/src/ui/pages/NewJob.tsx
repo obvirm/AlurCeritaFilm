@@ -318,7 +318,7 @@ export function NewJob() {
       <button
         onClick={handleRun}
         disabled={running || !videoPath || !!activeRunningJob}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[16px] bg-[#B6FF3B] px-6 py-4 text-sm font-black text-black hover:bg-[#9AE600] disabled:opacity-50 shadow-[0_0_24px_rgba(182,255,59,0.3)]"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[16px] bg-[#B6FF3B] px-6 py-4 text-sm font-black text-black hover:bg-[#9AE600] disabled:opacity-50 active:scale-[0.98] transition-[transform,background-color] duration-150"
       >
         {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
         {running ? "Menjalankan pipeline…" : "Run Pipeline →"}

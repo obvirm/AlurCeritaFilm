@@ -4,7 +4,7 @@ export function StatusBadge({ status, stage }: { status: JobStatus; stage?: JobS
   const map: Record<JobStatus, string> = {
     queued: "bg-[#1A1A1A] text-[#a1a1aa] border border-[#27272A]",
     running: "bg-amber-500 text-black animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.5)]",
-    done: "bg-[#B6FF3B] text-black shadow-[0_0_12px_rgba(182,255,59,0.4)]",
+    done: "bg-[#B6FF3B] text-black",
     error: "bg-red-500 text-white",
     cancelled: "bg-zinc-700 text-zinc-300",
   };

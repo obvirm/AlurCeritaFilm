@@ -108,8 +108,8 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
       onClick={() => onSelect(t.id)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className={`group relative overflow-hidden rounded-xl border bg-black text-left transition ${
-        active ? "border-[#B6FF3B] ring-1 ring-[#B6FF3B]/40" : "border-zinc-800 hover:border-zinc-700"
+      className={`group relative overflow-hidden rounded-xl border bg-black text-left transition-colors ${
+        active ? "border-[#B6FF3B]" : "border-zinc-800 hover:border-zinc-700"
       }`}
       aria-label={t.name || t.id}
     >

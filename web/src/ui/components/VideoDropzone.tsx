@@ -37,9 +37,9 @@ export function VideoDropzone({ onFile, disabled, accept = "video/*" }: Props) {
         handleFiles(e.dataTransfer.files);
       }}
       onClick={() => !disabled && inputRef.current?.click()}
-      className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed px-6 py-14 text-center transition ${
+      className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed px-6 py-14 text-center transition-colors ${
         dragOver
-          ? "border-[#B6FF3B] bg-[#B6FF3B]/10 shadow-[0_0_24px_rgba(182,255,59,0.2)]"
+          ? "border-[#B6FF3B] bg-[#B6FF3B]/10"
           : "border-[#27272A] bg-[#0A0A0A] hover:border-[#B6FF3B]/30 hover:bg-[#1A1A1A]"
       } ${disabled ? "pointer-events-none opacity-60" : ""}`}
     >
@@ -51,7 +51,7 @@ export function VideoDropzone({ onFile, disabled, accept = "video/*" }: Props) {
         onChange={(e) => handleFiles(e.target.files)}
         disabled={disabled}
       />
-      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${dragOver ? "bg-[#B6FF3B] text-black" : "bg-[#1A1A1A] text-[#B6FF3B]"} shadow-[0_0_12px_rgba(182,255,59,0.15)]`}>
+      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${dragOver ? "bg-[#B6FF3B] text-black" : "bg-[#1A1A1A] text-[#B6FF3B]"}`}>
         <Film className="h-7 w-7" />
       </div>
       <p className="text-sm font-black text-white flex items-center gap-2">
