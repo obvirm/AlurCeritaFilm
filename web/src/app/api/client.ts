@@ -34,6 +34,7 @@ export interface TemplateMeta {
   name: string;
   swatch: string;
   css: string;
+  filters: string;
   json: Record<string, unknown> & { styleControls?: Array<{ type: string; default?: string }> };
 }
 

@@ -23,6 +23,63 @@ function scopeCss(css: string, tid: string): string {
     .replaceAll(".tscaps-", `${p} .tscaps-`);
 }
 
+// Expand <tscaps:outline> + <tscaps:drop-shadow> ke standard SVG filter primitives
+// Mirip SvgRecipeExpander di studio tapi hardcoded untuk recipe yang dipakai
+function expandTscapsFilter(svg: string): string {
+  let out = svg;
+  out = out.replace(/<tscaps:outline\s+([^>]*?)\/>/g, (_m, attrs: string) => {
+    const g = (n: string, d: string) => { const m = attrs.match(new RegExp(`${n}="([^"]*)"`)); return m ? m[1] : d; };
+    const thickness = g("thickness", "0.12");
+    const ink = g("ink", "#000000");
+    const tin = g("in", "SourceAlpha");
+    const result = g("result", "outline");
+    return `<feMorphology in="${tin}" operator="dilate" radius="${thickness}em" result="${result}-shape"/><feFlood flood-color="${ink}" result="${result}-ink"/><feComposite in="${result}-ink" in2="${result}-shape" operator="in" result="${result}"/>`;
+  });
+  out = out.replace(/<tscaps:drop-shadow\s+([^>]*?)\/>/g, (_m, attrs: string) => {
+    const g = (n: string, d: string) => { const m = attrs.match(new RegExp(`${n}="([^"]*)"`)); return m ? m[1] : d; };
+    const distance = g("distance", "0.04");
+    const blur = g("blur", "0.04");
+    const ink = g("ink", "#000000");
+    const tin = g("in", "SourceAlpha");
+    const result = g("result", "shadow");
+    return `<feOffset in="${tin}" dx="0" dy="${distance}em" result="${result}-offset"/><feGaussianBlur in="${result}-offset" stdDeviation="${blur}em" result="${result}-spread"/><feFlood flood-color="${ink}" result="${result}-ink"/><feComposite in="${result}-ink" in2="${result}-spread" operator="in" result="${result}"/>`;
+  });
+  return out;
+}
+
+// Materialize var(--name, fallback) + resolve em→px
+function materializeFilter(body: string, controls: Record<string, string>, pxPerEm: number): string {
+  let out = body.replace(/var\(\s*--([a-zA-Z_][a-zA-Z0-9_-]*)\s*(?:,\s*([^)]*))?\s*\)/g, (_m, name: string, fallback: string) => {
+    if (controls[`--${name}`]) return controls[`--${name}`];
+    if (fallback !== undefined) return fallback.trim();
+    return _m;
+  });
+  out = out.replace(/(-?\d*\.?\d+)em/g, (_m, num: string) => String(Math.round(parseFloat(num) * pxPerEm * 1000) / 1000));
+  return out;
+}
+
+// Build filter artifacts: expand → materialize → scope IDs
+function buildFilterArtifacts(t: TemplateMeta, scopeKey: string, pxPerEm: number): { defsHtml: string; urlVars: Record<string, string> } | null {
+  if (!t.filters) return null;
+  const sc = (t.json as unknown as { styleControls?: Array<{ id: string; default?: string }> })?.styleControls;
+  const controls: Record<string, string> = {};
+  sc?.forEach((c) => { if (c.default) controls[`--tscaps-${c.id}`] = String(c.default); });
+
+  const expanded = expandTscapsFilter(t.filters);
+  const doc = new DOMParser().parseFromString(expanded, "image/svg+xml");
+  const filterEl = doc.querySelector("filter");
+  if (!filterEl) return null;
+
+  const localId = filterEl.getAttribute("id") || "filter";
+  const scopedId = `tscaps-filter-${scopeKey}-${localId}`;
+  const attrs = Array.from(filterEl.attributes).filter((a) => a.name !== "id").map((a) => `${a.name}="${a.value}"`).join(" ");
+  const materializedBody = materializeFilter(filterEl.innerHTML, controls, pxPerEm);
+  const defsHtml = `<filter id="${scopedId}" ${attrs}>${materializedBody}</filter>`;
+  const urlVars: Record<string, string> = {};
+  urlVars[`--svg-filter-${localId}`] = `url(#${scopedId})`;
+  return { defsHtml, urlVars };
+}
+
 const CHECKERED = "rgb(255 255 255 / 0.06)";
 const CHECK_BG: React.CSSProperties = {
   backgroundColor: "#0A0A0A",
@@ -55,39 +112,28 @@ export function TemplateGrid({
 function Cell({ template: t, active, onSelect }: { template: TemplateMeta; active: boolean; onSelect: (id: string) => void }) {
   const { primary, highlight } = colorsOf(t);
   const [hover, setHover] = useState(false);
-  // static = judul template (nama), hover = kuota 2-3 kata THIS IS TSCAPS biar highlight & animasi kepakai — luca fallback single biar tidak blank
   const words = hover ? (t.id === "luca" ? ["Luca"] : ["THIS", "IS", "TEMPLATE"]) : [t.name || t.id];
   const [activeIdx, setActiveIdx] = useState(0);
   const iv = useRef<number | null>(null);
   useEffect(() => {
     if (!hover || words.length <= 1) {
       setActiveIdx(0);
-      if (iv.current) {
-        window.clearInterval(iv.current);
-        iv.current = null;
-      }
+      if (iv.current) { window.clearInterval(iv.current); iv.current = null; }
       return;
     }
     setActiveIdx(0);
     iv.current = window.setInterval(() => setActiveIdx((i) => (i + 1) % words.length), 900);
-    return () => {
-      if (iv.current) {
-        window.clearInterval(iv.current);
-        iv.current = null;
-      }
-    };
+    return () => { if (iv.current) { window.clearInterval(iv.current); iv.current = null; } };
   }, [hover, words.length]);
   const [scale, setScale] = useState(1);
   const previewRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // fitScale — biar thumb 4:2 gak kosong luas kayak screenshot selene pill kecil
-  // dulu cap 1 jadi selene 90px di preview 284px dibiarin kecil, sekarang boleh scale up 2.2x biar ngisi
   useLayoutEffect(() => {
     const p = previewRef.current;
     const c = contentRef.current;
     if (!p || !c) return;
-    const pad = 4; // dulu 8 → kosong 16px tiap sisi, sekarang 4 biar ngisi
+    const pad = 4;
     const measure = () => {
       const cw = p.clientWidth - pad * 2;
       const ch = p.clientHeight - pad * 2;
@@ -103,6 +149,14 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     return () => ro.disconnect();
   }, [t.id, hover]);
 
+  // Build SVG filter artifacts: expand tscaps:outline + materialize + scope
+  const FONT_SIZE_PX = 57.6; // 4.5cqh * 12.8
+  const filterArtifacts = buildFilterArtifacts(t, t.id, FONT_SIZE_PX);
+  // Rewrite filter: url(#...) → filter: var(--svg-filter-...) agar pakai scoped ID
+  const scopedCss = t.css
+    ? scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)
+    : "";
+
   return (
     <button
       onClick={() => onSelect(t.id)}
@@ -114,8 +168,12 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
       aria-label={t.name || t.id}
     >
       <div ref={previewRef} data-tid={t.id} className="relative flex aspect-[4/2] w-full items-center justify-center overflow-hidden p-2" style={CHECK_BG}>
-        {t.css ? <style>{scopeCss(t.css, t.id)}</style> : null}
-        {/* virtual video 720x1280 biar cqh jalan — container-type:size agar cqh valid per thumb */}
+        {scopedCss ? <style>{scopedCss}</style> : null}
+        {filterArtifacts && (
+          <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
+            <defs dangerouslySetInnerHTML={{ __html: filterArtifacts.defsHtml }} />
+          </svg>
+        )}
         <div
           className="flex items-center justify-center"
           style={
@@ -126,6 +184,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
               transform: `scale(${scale})`,
               transformOrigin: "center",
               containerType: "size",
+              ...filterArtifacts?.urlVars,
             } as React.CSSProperties
           }
         >
@@ -133,13 +192,10 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
             <div key={hover ? "hov" : "idle"} className="segment flex items-center justify-center"
               style={
                 {
-                  // inject primary/highlight biar static sesuai template, bukan putih generik
                   ["--tscaps-primary-color" as string]: primary,
                   ["--tscaps-highlight-color" as string]: highlight,
-                  // kuota 2-3 kata biar highlight & line wrapping kepakai — THIS IS TSCAPS (14 chars), fallback single untuk luca
                   ["--segment-char-count" as string]: String(words.join(" ").length),
                   ["--m2s-ctl-dynamic-font-size" as string]: "12",
-                  // trigger animasi bawaan template pas hover — di luar hover delay negatif biar static visible
                   ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
                 } as React.CSSProperties
               }

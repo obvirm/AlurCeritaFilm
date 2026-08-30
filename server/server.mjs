@@ -585,10 +585,12 @@ const server = http.createServer(async (req, res) => {
           const swatch = colors.length >= 2
             ? `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`
             : colors[0] || "#888";
-          // kirim css + config untuk preview asli di browser
+          // kirim css + config + filters untuk preview asli di browser
           const cssPath = path.join(tplDir, e.name, "style.css");
           const css = fs.existsSync(cssPath) ? await fsp.readFile(cssPath, "utf8") : "";
-          templates.push({ id: e.name, name: meta.name || e.name, swatch, css, json: meta });
+          const filtersPath = path.join(tplDir, e.name, "filters.svg");
+          const filters = fs.existsSync(filtersPath) ? await fsp.readFile(filtersPath, "utf8") : "";
+          templates.push({ id: e.name, name: meta.name || e.name, swatch, css, filters, json: meta });
         } catch {}
       }
       templates.sort((a, b) => a.id.localeCompare(b.id));
