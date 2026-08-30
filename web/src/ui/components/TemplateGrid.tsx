@@ -56,7 +56,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
   const { primary, highlight } = colorsOf(t);
   const [hover, setHover] = useState(false);
   // static = judul template (nama), hover = kuota 2-3 kata THIS IS TSCAPS biar highlight & animasi kepakai — luca fallback single biar tidak blank
-  const words = hover ? (t.id === "luca" ? ["Luca"] : ["THIS", "IS", "TSCAPS"]) : [t.name || t.id];
+  const words = hover ? (t.id === "luca" ? ["Luca"] : ["THIS", "IS", "TEMPLATE"]) : [t.name || t.id];
   const [activeIdx, setActiveIdx] = useState(0);
   const iv = useRef<number | null>(null);
   useEffect(() => {
