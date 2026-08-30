@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TemplateMeta } from "@/app/api/client";
 import { Check } from "lucide-react";
 
@@ -57,6 +57,26 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
   const [hover, setHover] = useState(false);
   // static = judul template (nama), hover = kuota 2-3 kata THIS IS TSCAPS biar highlight & animasi kepakai — luca fallback single biar tidak blank
   const words = hover ? (t.id === "luca" ? ["Luca"] : ["THIS", "IS", "TSCAPS"]) : [t.name || t.id];
+  const [activeIdx, setActiveIdx] = useState(0);
+  const iv = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hover || words.length <= 1) {
+      setActiveIdx(0);
+      if (iv.current) {
+        window.clearInterval(iv.current);
+        iv.current = null;
+      }
+      return;
+    }
+    setActiveIdx(0);
+    iv.current = window.setInterval(() => setActiveIdx((i) => (i + 1) % words.length), 900);
+    return () => {
+      if (iv.current) {
+        window.clearInterval(iv.current);
+        iv.current = null;
+      }
+    };
+  }, [hover, words.length]);
   const [scale, setScale] = useState(1);
   const previewRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -128,11 +148,10 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                 {words.map((w, i) => (
                   <span
                     key={i}
-                    className={hover ? "word word-being-narrated" : "word"}
+                    className={hover && i === activeIdx ? "word word-being-narrated" : "word"}
                     style={
                       {
-                        ["--on-word-being-narrated-starts" as string]: hover ? `${i * 0.35}s` : "-10s",
-                        ["--word-being-narrated-duration" as string]: "0.3s",
+                        ["--on-word-being-narrated-starts" as string]: hover && i === activeIdx ? "0s" : "-10s",
                       } as React.CSSProperties
                     }
                   >
