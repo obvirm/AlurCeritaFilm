@@ -150,6 +150,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
   const scopedCss = t.css
     ? scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)
     : "";
+  const splitLetters = !!t.json?.rendering?.splitWordsIntoLetters;
 
   const controlVars: Record<string, string> = {};
   if (t.json?.styleControls) {
@@ -222,23 +223,51 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   } as React.CSSProperties
                 }
               >
-                {words.map((w, i) => (
-                  <span
-                    key={hover && i === activeIdx ? `a-${activeIdx}` : `w-${i}`}
-                    className={hover && i === activeIdx ? "word word-being-narrated" : "word" + (i === words.length - 1 ? " last-word-in-line" : "")}
-                    style={
-                      {
-                        ["--on-word-being-narrated-starts" as string]: hover && i === activeIdx ? "0s" : "-10s",
-                        ["--word-being-narrated-duration" as string]: "0.9s",
-                        ["--word-index" as string]: String(i),
-                        ["--word-char-count" as string]: String(w.length),
-                        ["--word-count" as string]: String(words.length),
-                      } as React.CSSProperties
-                    }
-                  >
-                    {w}
-                  </span>
-                ))}
+                {words.map((w, i) => {
+                  const isHL = hover && i === activeIdx;
+                  const wordStyle = {
+                    ["--on-word-being-narrated-starts" as string]: isHL ? "0s" : "-10s",
+                    ["--word-being-narrated-duration" as string]: "0.9s",
+                    ["--word-index" as string]: String(i),
+                    ["--word-char-count" as string]: String(w.length),
+                    ["--word-count" as string]: String(words.length),
+                  } as React.CSSProperties;
+                  if (!splitLetters) {
+                    return (
+                      <span
+                        key={isHL ? `a-${activeIdx}` : `w-${i}`}
+                        className={isHL ? "word word-being-narrated" : "word" + (i === words.length - 1 ? " last-word-in-line" : "")}
+                        style={wordStyle}
+                      >
+                        {w}
+                      </span>
+                    );
+                  }
+                  const letters = w.split("");
+                  const letterCount = letters.length;
+                  return (
+                    <span
+                      key={isHL ? `a-${activeIdx}` : `w-${i}`}
+                      className={isHL ? "word word-being-narrated" : "word" + (i === words.length - 1 ? " last-word-in-line" : "")}
+                      style={wordStyle}
+                    >
+                      {letters.map((ch, li) => (
+                        <span
+                          key={li}
+                          className="letter"
+                          style={
+                            {
+                              ["--letter-index" as string]: String(li),
+                              ["--letter-count" as string]: String(letterCount),
+                            } as React.CSSProperties
+                          }
+                        >
+                          {ch}
+                        </span>
+                      ))}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>

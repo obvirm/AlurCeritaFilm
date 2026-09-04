@@ -36,6 +36,7 @@ export interface TemplateMeta {
   css: string;
   filters: string;
   json: Record<string, unknown> & {
+    rendering?: { splitWordsIntoLetters?: boolean };
     styleControls?: Array<{
       id: string;
       type: string;
