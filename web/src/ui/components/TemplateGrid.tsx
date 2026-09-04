@@ -189,20 +189,32 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   ["--tscaps-primary-color" as string]: primary,
                   ["--tscaps-highlight-color" as string]: highlight,
                   ["--segment-char-count" as string]: String(words.join(" ").length),
+                  ["--word-count" as string]: String(words.length),
+                  ["--last-word-char-count" as string]: String(words[words.length - 1].length),
                   ["--m2s-ctl-dynamic-font-size" as string]: "12",
                   ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
                 } as React.CSSProperties
               }
             >
-              <div className="line">
+              <div className="line"
+                style={
+                  {
+                    ["--word-count" as string]: String(words.length),
+                    ["--last-word-char-count" as string]: String(words[words.length - 1].length),
+                  } as React.CSSProperties
+                }
+              >
                 {words.map((w, i) => (
                   <span
                     key={hover && i === activeIdx ? `a-${activeIdx}` : `w-${i}`}
-                    className={hover && i === activeIdx ? "word word-being-narrated" : "word"}
+                    className={hover && i === activeIdx ? "word word-being-narrated" : "word" + (i === words.length - 1 ? " last-word-in-line" : "")}
                     style={
                       {
                         ["--on-word-being-narrated-starts" as string]: hover && i === activeIdx ? "0s" : "-10s",
                         ["--word-being-narrated-duration" as string]: "0.9s",
+                        ["--word-index" as string]: String(i),
+                        ["--word-char-count" as string]: String(w.length),
+                        ["--word-count" as string]: String(words.length),
                       } as React.CSSProperties
                     }
                   >
