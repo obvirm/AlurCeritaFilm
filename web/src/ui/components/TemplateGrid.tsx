@@ -203,11 +203,12 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
               <div className="line">
                 {words.map((w, i) => (
                   <span
-                    key={i}
+                    key={hover && i === activeIdx ? `a-${activeIdx}` : `w-${i}`}
                     className={hover && i === activeIdx ? "word word-being-narrated" : "word"}
                     style={
                       {
                         ["--on-word-being-narrated-starts" as string]: hover && i === activeIdx ? "0s" : "-10s",
+                        ["--word-being-narrated-duration" as string]: "0.9s",
                       } as React.CSSProperties
                     }
                   >
