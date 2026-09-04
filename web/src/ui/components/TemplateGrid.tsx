@@ -23,8 +23,6 @@ function scopeCss(css: string, tid: string): string {
     .replaceAll(".tscaps-", `${p} .tscaps-`);
 }
 
-// Expand <tscaps:outline> + <tscaps:drop-shadow> ke standard SVG filter primitives
-// Mirip SvgRecipeExpander di studio tapi hardcoded untuk recipe yang dipakai
 function expandTscapsFilter(svg: string): string {
   let out = svg;
   out = out.replace(/<tscaps:outline\s+([^>]*?)\/>/g, (_m, attrs: string) => {
@@ -47,7 +45,6 @@ function expandTscapsFilter(svg: string): string {
   return out;
 }
 
-// Materialize var(--name, fallback) + resolve em→px
 function materializeFilter(body: string, controls: Record<string, string>, pxPerEm: number): string {
   let out = body.replace(/var\(\s*--([a-zA-Z_][a-zA-Z0-9_-]*)\s*(?:,\s*([^)]*))?\s*\)/g, (_m, name: string, fallback: string) => {
     if (controls[`--${name}`]) return controls[`--${name}`];
@@ -58,7 +55,6 @@ function materializeFilter(body: string, controls: Record<string, string>, pxPer
   return out;
 }
 
-// Build filter artifacts: expand → materialize → scope IDs
 function buildFilterArtifacts(t: TemplateMeta, scopeKey: string, pxPerEm: number): { defsHtml: string; urlVars: Record<string, string> } | null {
   if (!t.filters) return null;
   const sc = (t.json as unknown as { styleControls?: Array<{ id: string; default?: string }> })?.styleControls;
@@ -112,7 +108,7 @@ export function TemplateGrid({
 function Cell({ template: t, active, onSelect }: { template: TemplateMeta; active: boolean; onSelect: (id: string) => void }) {
   const { primary, highlight } = colorsOf(t);
   const [hover, setHover] = useState(false);
-  const words = hover ? (t.id === "luca" ? ["Luca"] : ["THIS", "IS", "TEMPLATE"]) : [t.name || t.id];
+  const words = hover ? ["THIS", "IS", "TEMPLATE"] : [t.name || t.id];
   const [activeIdx, setActiveIdx] = useState(0);
   const iv = useRef<number | null>(null);
   useEffect(() => {
@@ -149,10 +145,8 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     return () => ro.disconnect();
   }, [t.id, hover]);
 
-  // Build SVG filter artifacts: expand tscaps:outline + materialize + scope
-  const FONT_SIZE_PX = 57.6; // 4.5cqh * 12.8
+  const FONT_SIZE_PX = 57.6;
   const filterArtifacts = buildFilterArtifacts(t, t.id, FONT_SIZE_PX);
-  // Rewrite filter: url(#...) → filter: var(--svg-filter-...) agar pakai scoped ID
   const scopedCss = t.css
     ? scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)
     : "";
