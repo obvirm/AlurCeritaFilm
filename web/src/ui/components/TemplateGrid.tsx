@@ -225,6 +225,13 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
               >
                 {words.map((w, i) => {
                   const isHL = hover && i === activeIdx;
+                  const isLast = i === words.length - 1;
+                  const cls = [
+                    "word",
+                    isHL ? "word-being-narrated" : "",
+                    isLast ? "last-word-in-line" : "",
+                    i === 0 ? "first-word-in-line" : "",
+                  ].filter(Boolean).join(" ");
                   const wordStyle = {
                     ["--on-word-being-narrated-starts" as string]: isHL ? "0s" : "-10s",
                     ["--word-being-narrated-duration" as string]: "0.9s",
@@ -236,7 +243,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                     return (
                       <span
                         key={isHL ? `a-${activeIdx}` : `w-${i}`}
-                        className={isHL ? "word word-being-narrated" : "word" + (i === words.length - 1 ? " last-word-in-line" : "")}
+                        className={cls}
                         style={wordStyle}
                       >
                         {w}
@@ -248,7 +255,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   return (
                     <span
                       key={isHL ? `a-${activeIdx}` : `w-${i}`}
-                      className={isHL ? "word word-being-narrated" : "word" + (i === words.length - 1 ? " last-word-in-line" : "")}
+                      className={cls}
                       style={wordStyle}
                     >
                       {letters.map((ch, li) => (
