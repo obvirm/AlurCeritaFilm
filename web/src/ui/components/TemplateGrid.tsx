@@ -151,6 +151,21 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     ? scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)
     : "";
 
+  const controlVars: Record<string, string> = {};
+  if (t.json?.styleControls) {
+    for (const ctl of t.json.styleControls) {
+      const v =
+        ctl.type === "toggle"
+          ? ctl.default
+            ? (ctl.valueOn ?? "1")
+            : (ctl.valueOff ?? "0")
+          : ctl.type === "color"
+            ? String(ctl.default ?? "#ffffff")
+            : String(ctl.default ?? 0) + (ctl.unit ?? "");
+      controlVars[`--m2s-ctl-${ctl.id}`] = v;
+    }
+  }
+
   return (
     <button
       onClick={() => onSelect(t.id)}
@@ -191,8 +206,11 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   ["--segment-char-count" as string]: String(words.join(" ").length),
                   ["--word-count" as string]: String(words.length),
                   ["--last-word-char-count" as string]: String(words[words.length - 1].length),
-                  ["--m2s-ctl-dynamic-font-size" as string]: "12",
+                  ["--segment-index" as string]: "0",
+                  ["--segment-duration" as string]: "2",
+                  ["--tscaps-text-direction" as string]: "ltr",
                   ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
+                  ...controlVars,
                 } as React.CSSProperties
               }
             >

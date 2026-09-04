@@ -35,7 +35,16 @@ export interface TemplateMeta {
   swatch: string;
   css: string;
   filters: string;
-  json: Record<string, unknown> & { styleControls?: Array<{ type: string; default?: string }> };
+  json: Record<string, unknown> & {
+    styleControls?: Array<{
+      id: string;
+      type: string;
+      default?: string | number | boolean;
+      unit?: string;
+      valueOn?: string;
+      valueOff?: string;
+    }>;
+  };
 }
 
 // NB: vite proxy forwards /api /files /ws to 3131 — BASE stays empty so build works both dev and prod
