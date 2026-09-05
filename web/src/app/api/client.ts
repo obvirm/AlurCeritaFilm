@@ -37,6 +37,19 @@ export interface TemplateMeta {
   filters: string;
   json: Record<string, unknown> & {
     rendering?: { splitWordsIntoLetters?: boolean };
+    typography?: {
+      fontFamily?: string;
+      fontWeight?: number;
+      fontSize?: number;
+      letterSpacing?: number;
+      wordSpacing?: number;
+      lineSpacing?: number;
+      textAlign?: string;
+      textCase?: string;
+      italic?: boolean;
+      underline?: boolean;
+      strikethrough?: boolean;
+    };
     styleControls?: Array<{
       id: string;
       type: string;
@@ -44,6 +57,7 @@ export interface TemplateMeta {
       unit?: string;
       valueOn?: string;
       valueOff?: string;
+      options?: Array<{ value: string | number | boolean; cssValue?: string }>;
     }>;
   };
 }

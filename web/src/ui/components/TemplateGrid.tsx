@@ -152,19 +152,56 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     : "";
   const splitLetters = !!t.json?.rendering?.splitWordsIntoLetters;
 
-  const controlVars: Record<string, string> = {};
+  // Mirror tscaps ControlValueCssRenderer: style-control defaults are published as
+  // --tscaps-{id} (NOT --m2s-ctl-*; tscaps never writes that prefix).
+  const renderControlValue = (ctl: {
+    type: string;
+    default?: string | number | boolean;
+    unit?: string;
+    valueOn?: string;
+    valueOff?: string;
+    options?: Array<{ value: string | number | boolean; cssValue?: string }>;
+  }): string | null => {
+    const d = ctl.default;
+    if (ctl.type === "toggle") return d ? (ctl.valueOn ?? "1") : (ctl.valueOff ?? "0");
+    if (ctl.type === "select") {
+      const m = ctl.options?.find((o) => o.value === d);
+      return m?.cssValue ?? String(d ?? "");
+    }
+    if (ctl.type === "text") return `"${String(d ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    if (ctl.type === "image") return null;
+    if (ctl.type === "font") return String(d ?? "");
+    if (typeof d === "number" && ctl.unit) return `${d}${ctl.unit}`;
+    return String(d ?? "");
+  };
+
+  // Mirror TemplatePreviewArtifactsBuilder.buildWrapperVars: typography vars +
+  // every style control default, so the preview never drifts to CSS fallbacks.
+  const tscapsVars: Record<string, string> = {};
   if (t.json?.styleControls) {
     for (const ctl of t.json.styleControls) {
-      const v =
-        ctl.type === "toggle"
-          ? ctl.default
-            ? (ctl.valueOn ?? "1")
-            : (ctl.valueOff ?? "0")
-          : ctl.type === "color"
-            ? String(ctl.default ?? "#ffffff")
-            : String(ctl.default ?? 0) + (ctl.unit ?? "");
-      controlVars[`--m2s-ctl-${ctl.id}`] = v;
+      const v = renderControlValue(ctl);
+      if (v !== null) tscapsVars[`--tscaps-${ctl.id}`] = v;
     }
+  }
+  const ty = t.json?.typography;
+  if (ty) {
+    if (ty.fontFamily) tscapsVars["--tscaps-font-family"] = String(ty.fontFamily);
+    if (ty.fontSize != null) tscapsVars["--tscaps-font-size"] = `${ty.fontSize}cqh`;
+    if (ty.fontWeight != null) tscapsVars["--tscaps-font-weight"] = String(ty.fontWeight);
+    if (ty.letterSpacing != null) tscapsVars["--tscaps-letter-spacing"] = `${ty.letterSpacing}em`;
+    if (ty.wordSpacing != null) tscapsVars["--tscaps-word-spacing"] = `${ty.wordSpacing}em`;
+    if (ty.lineSpacing != null) tscapsVars["--tscaps-line-spacing"] = `${ty.lineSpacing}em`;
+    if (ty.textCase) tscapsVars["--tscaps-text-transform"] = String(ty.textCase);
+    if (ty.textAlign) {
+      tscapsVars["--tscaps-text-align"] =
+        ty.textAlign === "start" ? "left" : ty.textAlign === "end" ? "right" : String(ty.textAlign);
+    }
+    tscapsVars["--tscaps-font-style"] = ty.italic ? "italic" : "normal";
+    const decos: string[] = [];
+    if (ty.underline) decos.push("underline");
+    if (ty.strikethrough) decos.push("line-through");
+    if (decos.length > 0) tscapsVars["--tscaps-text-decoration"] = decos.join(" ");
   }
 
   return (
@@ -211,7 +248,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   ["--segment-duration" as string]: "2",
                   ["--tscaps-text-direction" as string]: "ltr",
                   ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
-                  ...controlVars,
+                  ...tscapsVars,
                 } as React.CSSProperties
               }
             >
