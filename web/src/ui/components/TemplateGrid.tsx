@@ -12,10 +12,6 @@ function colorsOf(t: TemplateMeta) {
 
 function scopeCss(css: string, tid: string): string {
   const p = `[data-tid="${tid}"]`;
-  // tscaps CssScoper scopes EVERY class selector under the scope selector.
-  // We approximate by prefixing all dot-prefixed classes in the rule selector
-  // that are not already prefixed. Critical for .letter, .word-decoration,
-  // .segment-decorations-*, .tscaps-video-frame-layer, etc.
   return css
     .replaceAll(".segment", `${p} .segment`)
     .replaceAll(".line", `${p} .line`)
@@ -120,59 +116,85 @@ export function TemplateGrid({
 function Cell({ template: t, active, onSelect }: { template: TemplateMeta; active: boolean; onSelect: (id: string) => void }) {
   const { primary, highlight } = colorsOf(t);
   const [hover, setHover] = useState(false);
-  // Mock plek tscaps (TemplatePreviewMock): hover = 3 kata mixed-case,
-// idle = nama template 1 kata. Durasi kata mock = 0.5s.
-  const words = hover ? ["THIS", "IS", "TEMPLATE"] : [t.name || t.id];
   const WORD_DUR = 0.5;
-  const [activeIdx, setActiveIdx] = useState(0);
-  const iv = useRef<number | null>(null);
+  const hoverWords = ["This", "is", "tscaps"];
+  const idleWord = [t.name || t.id];
+  const words = hover ? hoverWords : idleWord;
+  const [currentTime, setCurrentTime] = useState(0);
+
+  // Idle: time = WORD_DUR/2 (word-being-narrated active, all letters visible for letter mode)
+  // Hover: rAF drives currentTime from 0..totalDuration, cycling every 1.5s.
+  const totalDuration = hoverWords.length * WORD_DUR;
+  const idleTime = WORD_DUR / 2;
+
   useEffect(() => {
-    if (!hover || words.length <= 1) {
-      setActiveIdx(0);
-      if (iv.current) { window.clearInterval(iv.current); iv.current = null; }
+    if (!hover) {
+      setCurrentTime(0);
       return;
     }
-    setActiveIdx(0);
-    iv.current = window.setInterval(() => setActiveIdx((i) => (i + 1) % words.length), WORD_DUR * 1000);
-    return () => { if (iv.current) { window.clearInterval(iv.current); iv.current = null; } };
-  }, [hover, words.length]);
-  const [scale, setScale] = useState(1);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const p = previewRef.current;
-    const c = contentRef.current;
-    if (!p || !c) return;
-    const pad = 4;
-    const measure = () => {
-      const cw = p.clientWidth - pad * 2;
-      const ch = p.clientHeight - pad * 2;
-      const w = c.offsetWidth;
-      const h = c.offsetHeight;
-      if (!w || !h || cw <= 0 || ch <= 0) return;
-      setScale(Math.min(cw / w, ch / h, 2.4));
+    let startTime: number | null = null;
+    let rafId: number;
+    const tick = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = (timestamp - startTime) / 1000;
+      setCurrentTime(elapsed % totalDuration);
+      rafId = requestAnimationFrame(tick);
     };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(p);
-    ro.observe(c);
-    return () => ro.disconnect();
-  }, [t.id, hover]);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [hover, totalDuration]);
 
-  // tscaps: pxPerEm = fontSize * (renderHeight / 100). For preview, renderHeight = 1280.
-  const fontSizeCqh = t.json?.typography?.fontSize ?? 4.5;
-  const pxPerEm = fontSizeCqh * (1280 / 100);
-  const filterArtifacts = buildFilterArtifacts(t, t.id, pxPerEm);
-  // FROZEN_FRAME_CSS: pause all animations and fill both, so infinite loops freeze at their seeked frame.
-  const FROZEN_FRAME_CSS = '*, *::before, *::after { animation-play-state: paused !important; animation-fill-mode: both !important; }';
-  const scopedCss = t.css
-    ? `${scopeCss(FROZEN_FRAME_CSS, t.id)}\n${scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)}`
-    : scopeCss(FROZEN_FRAME_CSS, t.id);
-  const splitLetters = !!t.json?.rendering?.splitWordsIntoLetters;
+  const time = hover ? currentTime : idleTime;
 
-  // Mirror tscaps ControlValueCssRenderer: style-control defaults are published as
-  // --tscaps-{id} (NOT --m2s-ctl-*; tscaps never writes that prefix).
+  // Build mock segment/line/word state exactly like tscaps engine.
+  // Single word (idle): word spans 0..WORD_DUR, t = WORD_DUR/2 (being narrated).
+  // Multi-word (hover): words span 0..WORD_DUR, WORD_DUR..2*WORD_DUR, etc.
+  // Segment spans 0..totalDuration (or WORD_DUR for idle).
+  const segStart = 0;
+  const segEnd = hover ? totalDuration : WORD_DUR;
+  const segDuration = segEnd - segStart;
+  const segCharCount = words.join(" ").length;
+  const wordCount = words.length;
+  const lastWordCharCount = words[words.length - 1]?.length || 0;
+
+  // Segment vars
+   const segVars: Record<string, string> = {
+     ["--on-segment-starts" as string]: `${(segStart - time).toFixed(3)}s`,
+     ["--on-segment-ends" as string]: `${(segEnd - time).toFixed(3)}s`,
+     ["--segment-duration" as string]: `${segDuration.toFixed(3)}s`,
+     ["--segment-char-count" as string]: String(segCharCount),
+     ["--segment-index" as string]: "0",
+     ["--word-count" as string]: String(wordCount),
+     ["--last-word-char-count" as string]: String(lastWordCharCount),
+     ["--tscaps-primary-color" as string]: primary,
+     ["--tscaps-highlight-color" as string]: highlight,
+     ["--tscaps-text-direction" as string]: "ltr",
+   };
+
+  // Line vars (single line, spans full segment)
+  const lineStart = segStart;
+  const lineEnd = segEnd;
+   const lineVars: Record<string, string> = {
+     ["--on-line-not-narrated-yet-starts" as string]: `${(segStart - time).toFixed(3)}s`,
+     ["--on-line-not-narrated-yet-ends" as string]: `${(lineStart - time).toFixed(3)}s`,
+     ["--line-not-narrated-yet-duration" as string]: `${(lineStart - segStart).toFixed(3)}s`,
+     ["--on-line-being-narrated-starts" as string]: `${(lineStart - time).toFixed(3)}s`,
+     ["--on-line-being-narrated-ends" as string]: `${(lineEnd - time).toFixed(3)}s`,
+     ["--line-being-narrated-duration" as string]: `${(lineEnd - lineStart).toFixed(3)}s`,
+     ["--on-line-already-narrated-starts" as string]: `${(lineEnd - time).toFixed(3)}s`,
+     ["--on-line-already-narrated-ends" as string]: `${(segEnd - time).toFixed(3)}s`,
+     ["--line-already-narrated-duration" as string]: `${(segEnd - lineEnd).toFixed(3)}s`,
+     ["--word-count" as string]: String(wordCount),
+     ["--last-word-char-count" as string]: String(lastWordCharCount),
+   };
+
+   // Determine line state class
+   let lineState = "line-being-narrated";
+   if (time < lineStart) lineState = "line-not-narrated-yet";
+   else if (time >= lineEnd) lineState = "line-already-narrated";
+  const lineClasses = ["line", lineState].filter(Boolean).join(" ");
+
+  // Build wrapper vars (styleControls + typography) — copied from previous implementation
   const renderControlValue = (ctl: {
     type: string;
     default?: string | number | boolean;
@@ -194,8 +216,6 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     return String(d ?? "");
   };
 
-  // Mirror TemplatePreviewArtifactsBuilder.buildWrapperVars: typography vars +
-  // every style control default, so the preview never drifts to CSS fallbacks.
   const tscapsVars: Record<string, string> = {};
   if (t.json?.styleControls) {
     for (const ctl of t.json.styleControls) {
@@ -222,6 +242,43 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     if (ty.strikethrough) decos.push("line-through");
     if (decos.length > 0) tscapsVars["--tscaps-text-decoration"] = decos.join(" ");
   }
+
+  // pxPerEm from typography
+  const fontSizeCqh = t.json?.typography?.fontSize ?? 4.5;
+  const pxPerEm = fontSizeCqh * (1280 / 100);
+  const filterArtifacts = buildFilterArtifacts(t, t.id, pxPerEm);
+
+  // FROZEN_FRAME_CSS
+  const FROZEN_FRAME_CSS = '*, *::before, *::after { animation-play-state: paused !important; animation-fill-mode: both !important; }';
+  const scopedCss = t.css
+    ? `${scopeCss(FROZEN_FRAME_CSS, t.id)}\n${scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)}`
+    : scopeCss(FROZEN_FRAME_CSS, t.id);
+
+  const splitLetters = !!t.json?.rendering?.splitWordsIntoLetters;
+
+  // Scaling
+  const [scale, setScale] = useState(1);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const p = previewRef.current;
+    const c = contentRef.current;
+    if (!p || !c) return;
+    const pad = 4;
+    const measure = () => {
+      const cw = p.clientWidth - pad * 2;
+      const ch = p.clientHeight - pad * 2;
+      const w = c.offsetWidth;
+      const h = c.offsetHeight;
+      if (!w || !h || cw <= 0 || ch <= 0) return;
+      setScale(Math.min(cw / w, ch / h, 2.4));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(p);
+    ro.observe(c);
+    return () => ro.disconnect();
+  }, [t.id, hover]);
 
   return (
     <button
@@ -255,76 +312,58 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
           }
         >
           <div ref={contentRef} style={{ width: "max-content" } as React.CSSProperties}>
-            <div key={hover ? "hov" : "idle"} className="segment flex items-center justify-center"
-              style={
-                {
-                  ["--tscaps-primary-color" as string]: primary,
-                  ["--tscaps-highlight-color" as string]: highlight,
-                  ["--segment-char-count" as string]: String(words.join(" ").length),
-                  ["--word-count" as string]: String(words.length),
-                  ["--last-word-char-count" as string]: String(words[words.length - 1].length),
-                  ["--segment-index" as string]: "0",
-                  ["--segment-duration" as string]: hover ? "1.5s" : "0.5s",
-                  ["--tscaps-text-direction" as string]: "ltr",
-                  ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
-                  ...tscapsVars,
-                } as React.CSSProperties
-              }
-            >
-              <div className="line"
-                style={
-                  {
-                    ["--word-count" as string]: String(words.length),
-                    ["--last-word-char-count" as string]: String(words[words.length - 1].length),
-                    // Mock: 1 baris = 1 segmen penuh (0..words*0.5s); jam virtual
-                    // = tengah kata aktif, agar entrance level-baris jangkar benar.
-                    ["--on-line-being-narrated-starts" as string]: hover
-                      ? `${-(activeIdx * WORD_DUR + WORD_DUR / 2)}s`
-                      : `${-WORD_DUR / 2}s`,
-                  } as React.CSSProperties
-                }
-              >
+            <div className="segment flex items-center justify-center" style={{ ...segVars, ...tscapsVars } as React.CSSProperties}>
+              <div className={lineClasses} style={lineVars as React.CSSProperties}>
                 {words.map((w, i) => {
-                  // State plek engine: lewat < aktif < depan. Idle 1 kata = being.
-                  const stateCls =
-                    i < activeIdx ? "word-already-narrated" : i === activeIdx ? "word-being-narrated" : "word-not-narrated-yet";
+                  const wordStart = i * WORD_DUR;
+                  const wordEnd = (i + 1) * WORD_DUR;
+                  const wordDuration = wordEnd - wordStart;
+
+                  // Determine word state
+                  let state: "not-narrated-yet" | "being-narrated" | "already-narrated";
+                  if (time < wordStart) state = "not-narrated-yet";
+                  else if (time >= wordEnd) state = "already-narrated";
+                  else state = "being-narrated";
+
+                  const stateClass = `word-${state}`;
+
+                  const isFirst = i === 0;
                   const isLast = i === words.length - 1;
+
+                   const wordVars: Record<string, string> = {
+                     ["--on-word-not-narrated-yet-starts" as string]: `${(segStart - time).toFixed(3)}s`,
+                     ["--on-word-not-narrated-yet-ends" as string]: `${(wordStart - time).toFixed(3)}s`,
+                     ["--word-not-narrated-yet-duration" as string]: `${(wordStart - segStart).toFixed(3)}s`,
+                     ["--on-word-being-narrated-starts" as string]: `${(wordStart - time).toFixed(3)}s`,
+                     ["--on-word-being-narrated-ends" as string]: `${(wordEnd - time).toFixed(3)}s`,
+                     ["--word-being-narrated-duration" as string]: `${wordDuration.toFixed(3)}s`,
+                     ["--on-word-already-narrated-starts" as string]: `${(wordEnd - time).toFixed(3)}s`,
+                     ["--on-word-already-narrated-ends" as string]: `${(segEnd - time).toFixed(3)}s`,
+                     ["--word-already-narrated-duration" as string]: `${(segEnd - wordEnd).toFixed(3)}s`,
+                     ["--word-index" as string]: String(i),
+                     ["--word-char-count" as string]: String(w.length),
+                     ["--word-count" as string]: String(wordCount),
+                   };
+
                   const cls = [
                     "word",
-                    stateCls,
+                    stateClass,
+                    isFirst ? "first-word-in-line" : "",
                     isLast ? "last-word-in-line" : "",
-                    i === 0 ? "first-word-in-line" : "",
                   ].filter(Boolean).join(" ");
-                  // Jam virtual per kata: aktif mulai di 0s, lewat negatif
-                  // (sudah tampil), depan positif (letter-mode sembunyi).
-                  const starts = hover ? (i - activeIdx) * WORD_DUR : -WORD_DUR / 2;
-                  const wordStyle = {
-                    ["--on-word-being-narrated-starts" as string]: `${starts}s`,
-                    ["--word-being-narrated-duration" as string]: `${WORD_DUR}s`,
-                    ["--word-index" as string]: String(i),
-                    ["--word-char-count" as string]: String(w.length),
-                    ["--word-count" as string]: String(words.length),
-                  } as React.CSSProperties;
-                  const wordKey = i === activeIdx ? `a-${activeIdx}` : `w-${i}`;
+
                   if (!splitLetters) {
                     return (
-                      <span
-                        key={wordKey}
-                        className={cls}
-                        style={wordStyle}
-                      >
+                      <span key={`w-${i}`} className={cls} style={wordVars as React.CSSProperties}>
                         {w}
                       </span>
                     );
                   }
+
                   const letters = w.split("");
                   const letterCount = letters.length;
                   return (
-                    <span
-                      key={wordKey}
-                      className={cls}
-                      style={wordStyle}
-                    >
+                    <span key={`w-${i}`} className={cls} style={wordVars as React.CSSProperties}>
                       {letters.map((ch, li) => (
                         <span
                           key={li}
