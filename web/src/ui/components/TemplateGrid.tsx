@@ -306,15 +306,12 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                     ["--word-count" as string]: String(words.length),
                   } as React.CSSProperties;
                   const wordKey = i === activeIdx ? `a-${activeIdx}` : `w-${i}`;
-                  // Naya: pop-in scale 1.1 at 40% duration. Override entrance-pop to 0.5 for visibility.
-                  const isNaya = t.id === 'naya';
-                  const popStyle = isNaya && i === activeIdx ? { ['--entrance-pop' as string]: '0.5' } : {};
                   if (!splitLetters) {
                     return (
                       <span
                         key={wordKey}
                         className={cls}
-                        style={{ ...wordStyle, ...popStyle }}
+                        style={wordStyle}
                       >
                         {w}
                       </span>
