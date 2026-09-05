@@ -12,10 +12,19 @@ function colorsOf(t: TemplateMeta) {
 
 function scopeCss(css: string, tid: string): string {
   const p = `[data-tid="${tid}"]`;
+  // tscaps CssScoper scopes EVERY class selector under the scope selector.
+  // We approximate by prefixing all dot-prefixed classes in the rule selector
+  // that are not already prefixed. Critical for .letter, .word-decoration,
+  // .segment-decorations-*, .tscaps-video-frame-layer, etc.
   return css
     .replaceAll(".segment", `${p} .segment`)
     .replaceAll(".line", `${p} .line`)
     .replaceAll(".word", `${p} .word`)
+    .replaceAll(".letter", `${p} .letter`)
+    .replaceAll(".word-decoration", `${p} .word-decoration`)
+    .replaceAll(".segment-decorations-above", `${p} .segment-decorations-above`)
+    .replaceAll(".segment-decorations-below", `${p} .segment-decorations-below`)
+    .replaceAll(".tscaps-video-frame-layer", `${p} .tscaps-video-frame-layer`)
     .replaceAll(".emphasis", `${p} .emphasis`)
     .replaceAll(".accent", `${p} .accent`)
     .replaceAll(".entity", `${p} .entity`)
@@ -63,16 +72,19 @@ function buildFilterArtifacts(t: TemplateMeta, scopeKey: string, pxPerEm: number
 
   const expanded = expandTscapsFilter(t.filters);
   const doc = new DOMParser().parseFromString(expanded, "image/svg+xml");
-  const filterEl = doc.querySelector("filter");
-  if (!filterEl) return null;
+  const filterEls = doc.querySelectorAll("filter");
+  if (!filterEls.length) return null;
 
-  const localId = filterEl.getAttribute("id") || "filter";
-  const scopedId = `tscaps-filter-${scopeKey}-${localId}`;
-  const attrs = Array.from(filterEl.attributes).filter((a) => a.name !== "id").map((a) => `${a.name}="${a.value}"`).join(" ");
-  const materializedBody = materializeFilter(filterEl.innerHTML, controls, pxPerEm);
-  const defsHtml = `<filter id="${scopedId}" ${attrs}>${materializedBody}</filter>`;
+  let defsHtml = "";
   const urlVars: Record<string, string> = {};
-  urlVars[`--svg-filter-${localId}`] = `url(#${scopedId})`;
+  for (const filterEl of filterEls) {
+    const localId = filterEl.getAttribute("id") || "filter";
+    const scopedId = `tscaps-filter-${scopeKey}-${localId}`;
+    const attrs = Array.from(filterEl.attributes).filter((a) => a.name !== "id").map((a) => `${a.name}="${a.value}"`).join(" ");
+    const materializedBody = materializeFilter(filterEl.innerHTML, controls, pxPerEm);
+    defsHtml += `<filter id="${scopedId}" ${attrs}>${materializedBody}</filter>`;
+    urlVars[`--svg-filter-${localId}`] = `url(#${scopedId})`;
+  }
   return { defsHtml, urlVars };
 }
 
@@ -110,7 +122,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
   const [hover, setHover] = useState(false);
   // Mock plek tscaps (TemplatePreviewMock): hover = 3 kata mixed-case,
 // idle = nama template 1 kata. Durasi kata mock = 0.5s.
-  const words = hover ? ["This", "is", "tscaps"] : [t.name || t.id];
+  const words = hover ? ["THIS", "IS", "TEMPLATE"] : [t.name || t.id];
   const WORD_DUR = 0.5;
   const [activeIdx, setActiveIdx] = useState(0);
   const iv = useRef<number | null>(null);
@@ -148,11 +160,15 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
     return () => ro.disconnect();
   }, [t.id, hover]);
 
-  const FONT_SIZE_PX = 57.6;
-  const filterArtifacts = buildFilterArtifacts(t, t.id, FONT_SIZE_PX);
+  // tscaps: pxPerEm = fontSize * (renderHeight / 100). For preview, renderHeight = 1280.
+  const fontSizeCqh = t.json?.typography?.fontSize ?? 4.5;
+  const pxPerEm = fontSizeCqh * (1280 / 100);
+  const filterArtifacts = buildFilterArtifacts(t, t.id, pxPerEm);
+  // FROZEN_FRAME_CSS: pause all animations and fill both, so infinite loops freeze at their seeked frame.
+  const FROZEN_FRAME_CSS = '*, *::before, *::after { animation-play-state: paused !important; animation-fill-mode: both !important; }';
   const scopedCss = t.css
-    ? scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)
-    : "";
+    ? `${scopeCss(FROZEN_FRAME_CSS, t.id)}\n${scopeCss(t.css, t.id).replace(/filter:\s*url\(#([a-zA-Z0-9_-]+)\)/g, (_m, fid: string) => `filter: var(--svg-filter-${fid})`)}`
+    : scopeCss(FROZEN_FRAME_CSS, t.id);
   const splitLetters = !!t.json?.rendering?.splitWordsIntoLetters;
 
   // Mirror tscaps ControlValueCssRenderer: style-control defaults are published as
@@ -289,12 +305,16 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                     ["--word-char-count" as string]: String(w.length),
                     ["--word-count" as string]: String(words.length),
                   } as React.CSSProperties;
+                  const wordKey = i === activeIdx ? `a-${activeIdx}` : `w-${i}`;
+                  // Naya: pop-in scale 1.1 at 40% duration. Override entrance-pop to 0.5 for visibility.
+                  const isNaya = t.id === 'naya';
+                  const popStyle = isNaya && i === activeIdx ? { ['--entrance-pop' as string]: '0.5' } : {};
                   if (!splitLetters) {
                     return (
                       <span
-                        key={`w-${i}`}
+                        key={wordKey}
                         className={cls}
-                        style={wordStyle}
+                        style={{ ...wordStyle, ...popStyle }}
                       >
                         {w}
                       </span>
@@ -304,7 +324,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   const letterCount = letters.length;
                   return (
                     <span
-                      key={`w-${i}`}
+                      key={wordKey}
                       className={cls}
                       style={wordStyle}
                     >
