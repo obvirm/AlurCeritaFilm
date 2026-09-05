@@ -108,7 +108,10 @@ export function TemplateGrid({
 function Cell({ template: t, active, onSelect }: { template: TemplateMeta; active: boolean; onSelect: (id: string) => void }) {
   const { primary, highlight } = colorsOf(t);
   const [hover, setHover] = useState(false);
-  const words = hover ? ["THIS", "IS", "TEMPLATE"] : [t.name || t.id];
+  // Mock plek tscaps (TemplatePreviewMock): hover = 3 kata mixed-case,
+// idle = nama template 1 kata. Durasi kata mock = 0.5s.
+  const words = hover ? ["This", "is", "tscaps"] : [t.name || t.id];
+  const WORD_DUR = 0.5;
   const [activeIdx, setActiveIdx] = useState(0);
   const iv = useRef<number | null>(null);
   useEffect(() => {
@@ -118,7 +121,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
       return;
     }
     setActiveIdx(0);
-    iv.current = window.setInterval(() => setActiveIdx((i) => (i + 1) % words.length), 900);
+    iv.current = window.setInterval(() => setActiveIdx((i) => (i + 1) % words.length), WORD_DUR * 1000);
     return () => { if (iv.current) { window.clearInterval(iv.current); iv.current = null; } };
   }, [hover, words.length]);
   const [scale, setScale] = useState(1);
@@ -245,7 +248,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   ["--word-count" as string]: String(words.length),
                   ["--last-word-char-count" as string]: String(words[words.length - 1].length),
                   ["--segment-index" as string]: "0",
-                  ["--segment-duration" as string]: "2",
+                  ["--segment-duration" as string]: hover ? "1.5s" : "0.5s",
                   ["--tscaps-text-direction" as string]: "ltr",
                   ["--on-segment-starts" as string]: hover ? "0s" : "-10s",
                   ...tscapsVars,
@@ -257,21 +260,31 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   {
                     ["--word-count" as string]: String(words.length),
                     ["--last-word-char-count" as string]: String(words[words.length - 1].length),
+                    // Mock: 1 baris = 1 segmen penuh (0..words*0.5s); jam virtual
+                    // = tengah kata aktif, agar entrance level-baris jangkar benar.
+                    ["--on-line-being-narrated-starts" as string]: hover
+                      ? `${-(activeIdx * WORD_DUR + WORD_DUR / 2)}s`
+                      : `${-WORD_DUR / 2}s`,
                   } as React.CSSProperties
                 }
               >
                 {words.map((w, i) => {
-                  const isHL = hover && i === activeIdx;
+                  // State plek engine: lewat < aktif < depan. Idle 1 kata = being.
+                  const stateCls =
+                    i < activeIdx ? "word-already-narrated" : i === activeIdx ? "word-being-narrated" : "word-not-narrated-yet";
                   const isLast = i === words.length - 1;
                   const cls = [
                     "word",
-                    isHL ? "word-being-narrated" : "",
+                    stateCls,
                     isLast ? "last-word-in-line" : "",
                     i === 0 ? "first-word-in-line" : "",
                   ].filter(Boolean).join(" ");
+                  // Jam virtual per kata: aktif mulai di 0s, lewat negatif
+                  // (sudah tampil), depan positif (letter-mode sembunyi).
+                  const starts = hover ? (i - activeIdx) * WORD_DUR : -WORD_DUR / 2;
                   const wordStyle = {
-                    ["--on-word-being-narrated-starts" as string]: isHL ? "0s" : "-10s",
-                    ["--word-being-narrated-duration" as string]: "0.9s",
+                    ["--on-word-being-narrated-starts" as string]: `${starts}s`,
+                    ["--word-being-narrated-duration" as string]: `${WORD_DUR}s`,
                     ["--word-index" as string]: String(i),
                     ["--word-char-count" as string]: String(w.length),
                     ["--word-count" as string]: String(words.length),
@@ -279,7 +292,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   if (!splitLetters) {
                     return (
                       <span
-                        key={isHL ? `a-${activeIdx}` : `w-${i}`}
+                        key={`w-${i}`}
                         className={cls}
                         style={wordStyle}
                       >
@@ -291,7 +304,7 @@ function Cell({ template: t, active, onSelect }: { template: TemplateMeta; activ
                   const letterCount = letters.length;
                   return (
                     <span
-                      key={isHL ? `a-${activeIdx}` : `w-${i}`}
+                      key={`w-${i}`}
                       className={cls}
                       style={wordStyle}
                     >
