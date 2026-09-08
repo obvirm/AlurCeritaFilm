@@ -1,0 +1,46 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Komika Axis");
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 4.5cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  text-transform: var(--tscaps-text-transform, uppercase);
+  color: var(--tscaps-primary-color, #ffffff);
+  filter: url(#beast-outline);
+  --entrance-scale: 0.96;
+  --entrance-fade: 1;
+  --entrance-duration: 0.28s;
+  animation: tscaps-scale-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+@keyframes tscaps-scale-in {
+  0% {
+    opacity: var(--entrance-fade);
+    transform: scale(var(--entrance-scale));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.16em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffea00);
+}

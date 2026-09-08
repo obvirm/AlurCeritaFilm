@@ -1,0 +1,47 @@
+<tscaps:recipe xmlns:tscaps="https://tscaps.io/filters" name="chromatic-split">
+  <!--
+    Two colour ghosts offset in opposite directions from the glyph
+    silhouette. Reads as a chromatic-aberration fringe: the source
+    stays crisp on top, the ghosts show through on either side of
+    the letters.
+
+    `x` and `y` are numbers of `em`, without the unit — the recipe
+    appends it and the runtime resolves it to px per render, since
+    filter primitives take neither relative units nor `calc()`. Pass
+    literals for a fixed split, or `var()` reads of the `split-x`,
+    `split-y`, `split-color-a` and `split-color-b` controls to make it
+    tunable. The recipe reads no variable of its own and knows no
+    control by name, so calling it leaves no obligation behind beyond
+    the arguments passed.
+
+    Note that style-control values reach a filter unitless — the DOM
+    gets `0.09em`, the filter scope gets `0.09` — so a `var()` passed
+    here must resolve to a bare number, and its fallback must be bare
+    too.
+
+    Ghost A shifts by `(+x, +y)` and is tinted with `color-a`; ghost B
+    shifts by `(-x, -y)` and is tinted with `color-b`. The filter region
+    on the host `<filter>` has to leave room for both shifts or the
+    ghosts clip; `x` and `y` cross the region at `x` from the glyph on
+    each side.
+
+    Publishes two results: `{result}-a` (ghost A, positive shift) and
+    `{result}-b` (ghost B, negative shift). Merge both under the source
+    or under a subsequent outline for a fringe that reads only past the
+    silhouette.
+  -->
+  <tscaps:param name="x"/>
+  <tscaps:param name="y" default="0"/>
+  <tscaps:param name="color-a"/>
+  <tscaps:param name="color-b"/>
+  <tscaps:param name="in" default="SourceAlpha"/>
+  <tscaps:param name="result" default="split"/>
+
+  <feOffset in="{in}" dx="{x}em" dy="{y}em" result="{result}-a-shape"/>
+  <feFlood flood-color="{color-a}" result="{result}-a-ink"/>
+  <feComposite in="{result}-a-ink" in2="{result}-a-shape" operator="in" result="{result}-a"/>
+
+  <feOffset in="{in}" dx="-{x}em" dy="-{y}em" result="{result}-b-shape"/>
+  <feFlood flood-color="{color-b}" result="{result}-b-ink"/>
+  <feComposite in="{result}-b-ink" in2="{result}-b-shape" operator="in" result="{result}-b"/>
+</tscaps:recipe>

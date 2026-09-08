@@ -1,0 +1,28 @@
+@use '../_lib/animation/highlight-pulse' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Playfair Display Variable',
+    $font-size: 2.97cqh,
+    $font-style: italic,
+    $letter-spacing: 0.02em,
+    $line-height: 1.35,
+    $color: #fff8e7,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.13em);
+  text-shadow: 0 0.11em 0.47em var(--tscaps-shadow-color, rgba(0, 0, 0, 0.6));
+  @include highlight-pulse($element: 'word', $rest-color: #fff8e7, $highlight-color: #f5c982);
+}

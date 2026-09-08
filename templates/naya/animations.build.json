@@ -1,0 +1,53 @@
+[
+  {
+    "id": "rise-in",
+    "element": "segment",
+    "values": {
+      "--entrance-rise": {
+        "kind": "number",
+        "amount": 0.13,
+        "unit": "em"
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.25,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-rise-in"
+    ]
+  },
+  {
+    "id": "pop-in",
+    "element": "word",
+    "values": {
+      "--entrance-pop": {
+        "kind": "number",
+        "amount": 0.1,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.25,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-pop-in"
+    ]
+  },
+  {
+    "id": "hype-emoji-enter",
+    "element": "decoration",
+    "values": {},
+    "keyframes": [
+      "tscaps-hype-emoji-enter"
+    ]
+  }
+]

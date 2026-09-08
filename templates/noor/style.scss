@@ -1,0 +1,84 @@
+@use '../_lib/animation/settle-in' as *;
+@use '../_lib/dynamic-font-size' as *;
+@use '../_lib/glow' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  --tscaps-font-size-scale: #{dynamic-font-size(0.08)};
+  @include segment-typography(
+    $font-family: 'Anton',
+    $font-size: 6.2cqh,
+    $font-weight: 900,
+    $letter-spacing: 0.02em,
+    $line-height: 1.05,
+    $text-transform: uppercase,
+    $color: null,
+  );
+
+  /* The warm halo comes last on purpose. Each function in a filter chain feeds
+     the one after it, so a glow placed before the four outline passes becomes
+     their input and they draw a hard black edge around the halo itself. Last,
+     it is thrown by the finished letters, which is what it is meant to be.
+
+     It has to be a filter rather than a `text-shadow`: the letters are filled
+     by a `background-clip: text` gradient, and a background paints *under* the
+     text shadow, so a shadow here would cover the gold it was meant to sit
+     behind and flood the word with the halo's colour. */
+  filter:
+    drop-shadow(var(--tscaps-outline-thickness, 0.015em) 0 0 var(--tscaps-outline-color, #000))
+    drop-shadow(calc(var(--tscaps-outline-thickness, 0.015em) * -1) 0 0 var(--tscaps-outline-color, #000))
+    drop-shadow(0 var(--tscaps-outline-thickness, 0.015em) 0 var(--tscaps-outline-color, #000))
+    drop-shadow(0 calc(var(--tscaps-outline-thickness, 0.015em) * -1) 0 var(--tscaps-outline-color, #000))
+    drop-shadow(soft-drop-shadow(0.08, 0.5))
+    glow-filter(0.12, $color: var(--tscaps-primary-color, #ffd84d));
+
+  @include settle-in(
+    $element: 'segment',
+    $distance: -0.05em,
+    $from-opacity: 0.8,
+    $delay: var(--on-segment-starts),
+    $duration: 0.3s,
+    $easing: cubic-bezier(0.1, 0.55, 0.2, 1),
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.1em);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tscaps-primary-color, #ffd84d), #000 28%) 0%,
+    var(--tscaps-primary-color, #ffd84d) 25%,
+    color-mix(in srgb, var(--tscaps-primary-color, #ffd84d), #000 48%) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.emphasis, .accent, .entity {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tscaps-tag-color, #ffffff), var(--tscaps-primary-color, #ffd84d) 35%) 0%,
+    var(--tscaps-tag-color, #ffffff) 25%,
+    color-mix(in srgb, var(--tscaps-tag-color, #ffffff), var(--tscaps-primary-color, #ffd84d) 65%) 100%
+  );
+}
+
+.quote {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tscaps-quote-color, #9ce874), #000 22%) 0%,
+    var(--tscaps-quote-color, #9ce874) 25%,
+    color-mix(in srgb, var(--tscaps-quote-color, #9ce874), #000 48%) 100%
+  );
+}

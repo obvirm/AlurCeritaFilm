@@ -1,0 +1,55 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Inter Variable");
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 5.2cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, -0.045em);
+  line-height: 0.92em;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.12em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000000);
+  paint-order: stroke fill;
+  text-shadow: 0 -0.4em 0.8em var(--tscaps-shadow-color, #333333);
+  --entrance-fade: 0;
+  --entrance-duration: 0.16s;
+  animation: tscaps-fade-in var(--entrance-duration) var(--on-word-being-narrated-starts) ease both;
+}
+@keyframes tscaps-fade-in {
+  from {
+    opacity: var(--entrance-fade);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.emphasis, .accent, .entity {
+  color: var(--tscaps-tag-color, #ffffff);
+  font-size: calc(0.85em * var(--tscaps-tag-font-scale, 1.4));
+  text-shadow: 0 0 0.087em var(--tscaps-tag-color, #ffffff), 0 0 0.368em var(--tscaps-shadow-color, #333333), 0 -0.4em 0.8em var(--tscaps-shadow-color, #333333);
+}
+
+.emphasis, .entity {
+  font-family: var(--tscaps-tag-font-family, "EB Garamond Variable");
+  font-weight: var(--tscaps-tag-font-weight, 400);
+  font-style: italic;
+  font-size: calc(1em * var(--tscaps-tag-font-scale, 1.4));
+}

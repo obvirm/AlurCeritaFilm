@@ -1,0 +1,40 @@
+[
+  {
+    "id": "fade-in",
+    "element": "segment",
+    "values": {
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.25,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-fade-in"
+    ]
+  },
+  {
+    "id": "bob",
+    "element": "word",
+    "values": {
+      "--bob-distance": {
+        "kind": "number",
+        "amount": 0.19,
+        "unit": "em"
+      },
+      "--bob-duration": {
+        "kind": "number",
+        "amount": 1.6,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-bob"
+    ]
+  }
+]

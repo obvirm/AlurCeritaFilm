@@ -1,0 +1,100 @@
+@use '../_lib/animation/scale-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/**
+ * A halo tight against the glyphs and a shade below, laid down twice. Once is
+ * too faint for either to resolve: the halo reads as a blur on the letters
+ * rather than as light coming off them, and the shade never separates from the
+ * word it falls from.
+ *
+ * Twice rather than any other count because it is what the look being followed
+ * comes to. That one paints the pair three times — once from the word and once
+ * from each of the two copies its outline is built from — but the copies are
+ * filled solid, so each sits over its own pass and only the part that clears
+ * the outline survives. Two passes is what is left, and matching it was a
+ * matter of putting one, two and three beside the original.
+ *
+ * `$halo` is what the light is the colour of — the caption's shade for a plain
+ * word, the word's own colour for a lifted one. The shade underneath keeps the
+ * shade colour either way, since it is cast rather than emitted.
+ */
+@mixin lit-from-behind($halo) {
+  text-shadow:
+    0 0 0.127em $halo,
+    0 0.111em 0.159em var(--tscaps-shadow-color, #000000),
+    0 0 0.127em $halo,
+    0 0.111em 0.159em var(--tscaps-shadow-color, #000000);
+}
+
+/* One word at a time, so the caption is the word and the entrance belongs to
+   the caption rather than to anything inside it.
+
+   It pushes outward by a tenth and stays there, which is why it starts under
+   its resting size instead of over it: growing to a tenth above the declared
+   size and settling at the declared size are the same picture, and the second
+   leaves the size slider meaning what it says. The easing overshoots on its
+   own — the pop is in the curve, not in a keyframe. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Gabarito Variable',
+    $font-size: 4.92cqh,
+    $font-weight: 900,
+    $line-height: 1.2,
+  );
+  @include scale-in(
+    $element: 'segment',
+    $from: 0.909,
+    $delay: var(--on-segment-starts),
+    $duration: 0.1s,
+    $easing: cubic-bezier(0.1, 0.01, 0, 1.14),
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* The outline starts on rather than at zero: at this weight the letters carry
+   it without thickening, and it is what holds the caption against a bright
+   shot — the shade below is too soft and too close to do that work. */
+.word {
+  @include word-layout(0.13em);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0.1em) var(--tscaps-outline-color, #000000);
+  paint-order: stroke fill;
+  @include lit-from-behind(var(--tscaps-shadow-color, #000000));
+}
+
+/* Colour is the whole of the mark, and it starts somewhere rather than at the
+   text's own — a caption of one word has nothing beside it to be read against,
+   so a lift that showed nothing until someone picked a colour would show
+   nothing at all.
+
+   The family splits between what a mark means and what it is doing there. The
+   punch word and the proper noun are the sentence's own — the thing being said
+   and the thing being named — and they share a colour. The lifts are rhythm,
+   sprinkled two to four to a sentence to keep the captions moving, and they
+   take the other.
+
+   The split has to fall there rather than anywhere else, because the lifts
+   alone outnumber the rest: put them with either of the other two and that
+   colour lands on nearly every marked word while the second barely shows. */
+.emphasis, .entity {
+  color: var(--tscaps-tag-color, #3be3f7);
+  @include lit-from-behind(var(--tscaps-tag-color, #3be3f7));
+}
+
+.accent {
+  color: var(--tscaps-tag-lift-color, #52f73c);
+  @include lit-from-behind(var(--tscaps-tag-lift-color, #52f73c));
+}
+
+/* Its own shade, tight and close, since the glyph is a picture rather than
+   text and the caption's halo would read as a smudge around it. */
+.segment-decorations-below > .word-decoration {
+  text-shadow: 0 0.03em 0.03em var(--tscaps-shadow-color, #000000);
+}

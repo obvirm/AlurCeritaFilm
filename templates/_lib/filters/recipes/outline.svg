@@ -1,0 +1,49 @@
+<tscaps:recipe xmlns:tscaps="https://tscaps.io/filters" name="outline">
+  <!--
+    Solid ring around every glyph, built by dilating the glyph
+    silhouette and filling the dilation with ink.
+
+    Not the default outline — the one to reach for when the CSS stroke
+    breaks. `-webkit-text-stroke` is exact and continuous, but on a face
+    with sharp apexes its miter joins shoot out into spikes once the
+    width grows, and `stroke-linejoin` does not apply to HTML text so
+    there is no portable fix. Dilating `SourceAlpha` has no joins to
+    blow out, and pays for it in resolution: the radius is rounded to
+    whole device pixels, differently per engine, so the dial steps
+    instead of sliding and a preview quantizes against a smaller pixel
+    size than its export. A template whose outline is thin, or whose
+    face has no sharp joins, is better off on the stroke.
+
+    `thickness` is a number of `em`, without the unit — the recipe
+    appends it and the runtime resolves it to px per render, since
+    filter primitives take neither relative units nor `calc()`. Pass a
+    literal for a fixed ring, or a `var()` read of the
+    `outline-thickness` and `outline-color` controls to make it
+    tunable. The recipe reads no variable of its own and knows no
+    control by name, so calling it leaves no obligation behind beyond
+    the arguments passed.
+
+    Note that style-control values reach a filter unitless — the DOM
+    gets `0.14em`, the filter scope gets `0.14` — so a `var()` passed
+    here must resolve to a bare number, and its fallback must be bare
+    too.
+
+    The dilation grows outward from the glyph, so the radius IS the
+    visible thickness. The filter region on the host `<filter>` has to
+    leave room for it or the ring clips.
+
+    Publishes two results: `{result}` is the inked ring, ready to merge
+    under `SourceGraphic`; `{result}-shape` is the bare dilated
+    silhouette, which a filter wanting a drop shadow of the outlined
+    text — rather than of the raw glyph — can offset and blur.
+  -->
+  <tscaps:param name="thickness"/>
+  <tscaps:param name="ink" default="#000000"/>
+  <tscaps:param name="in" default="SourceAlpha"/>
+  <tscaps:param name="result" default="outline"/>
+
+  <feMorphology in="{in}" operator="dilate"
+                radius="{thickness}em" result="{result}-shape"/>
+  <feFlood flood-color="{ink}" result="{result}-ink"/>
+  <feComposite in="{result}-ink" in2="{result}-shape" operator="in" result="{result}"/>
+</tscaps:recipe>

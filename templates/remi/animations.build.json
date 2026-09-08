@@ -1,0 +1,36 @@
+[
+  {
+    "id": "snap-in",
+    "element": "word",
+    "values": {
+      "--entrance-rise": {
+        "kind": "number",
+        "amount": 0.31,
+        "unit": "em"
+      },
+      "--entrance-rotation": {
+        "kind": "number",
+        "amount": 7,
+        "unit": ""
+      },
+      "--entrance-scale": {
+        "kind": "number",
+        "amount": 0.7,
+        "unit": ""
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.36,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-snap-in"
+    ]
+  }
+]

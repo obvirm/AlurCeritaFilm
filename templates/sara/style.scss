@@ -1,0 +1,72 @@
+@use '../_lib/animation/fade-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* The leading is unitless, so every line resolves it against its own size and a
+   line holding a lifted word opens up by the whole of that word's growth. That
+   is the design rather than a side effect: the extra room is what lets a long
+   lifted word take a line of its own instead of crowding the ones beside it. */
+.segment {
+  @include segment-typography(
+    $font-family: 'IM Fell English',
+    $font-size: 4.92cqh,
+    $font-weight: 400,
+    $letter-spacing: -0.048em,
+    $line-height: 1,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Three layers, listed in the order they paint: a bloom in the text's own
+   colour, a grey haze tight against the glyphs, and a soft shade behind both,
+   thrown down and to the right.
+
+   The haze is the only one that separates the caption from what is behind it.
+   The bloom carries the text's colour, so over a pale shot it adds light to
+   light and disappears, and the shade is too soft and too far off to hold an
+   edge. That is why the haze stays a fixed grey instead of following a colour
+   control: it is doing a job, not carrying a look, and a reader given it as a
+   knob would be handed the one layer that must not move. */
+.word {
+  @include word-layout(0.11em);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000000);
+  paint-order: stroke fill;
+  text-shadow:
+    0 0 0.286em var(--tscaps-primary-color, #ffffff),
+    0 0 0.159em #6a6a6a,
+    0.084em 0.084em 0.238em color-mix(in srgb, var(--tscaps-shadow-color, #000000) 50%, transparent);
+  @include fade-in(
+    $element: 'word',
+    $delay: var(--on-word-being-narrated-starts),
+    $from-opacity: 0,
+    $duration: 0.16s,
+  );
+}
+
+/* Size is the whole of the mark a tagger leaves: no second face, no second
+   weight, and a colour that starts equal to the text's. A caption shows
+   nothing until someone picks one, which suits a look whose subject is the
+   face itself.
+
+   The two glows divide by the same scale that multiplies the size, so they
+   keep the radius they have on a plain word instead of growing with it. A
+   bloom is a distance from the edge of a glyph, and one that grew with the
+   letters would read as a different, softer light on the one word meant to
+   stand out — and would go on drifting as the scale is dragged. Only the
+   shade below is left to scale, since a shade is thrown by the letters and
+   belongs to their size. */
+.emphasis, .accent, .entity {
+  color: var(--tscaps-tag-color, #ffffff);
+  font-size: calc(1em * var(--tscaps-tag-font-scale, 1.4));
+  text-shadow:
+    0 0 calc(0.286em / var(--tscaps-tag-font-scale, 1.4)) var(--tscaps-tag-color, #ffffff),
+    0 0 calc(0.159em / var(--tscaps-tag-font-scale, 1.4)) #6a6a6a,
+    0.084em 0.084em 0.238em color-mix(in srgb, var(--tscaps-shadow-color, #000000) 50%, transparent);
+}

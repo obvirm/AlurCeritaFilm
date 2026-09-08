@@ -1,0 +1,10 @@
+[
+  {
+    "id": "pulse-word-in",
+    "element": "word",
+    "values": {},
+    "keyframes": [
+      "tscaps-pulse-word-in"
+    ]
+  }
+]

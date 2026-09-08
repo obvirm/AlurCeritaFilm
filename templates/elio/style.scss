@@ -1,0 +1,37 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Bebas Neue',
+    $font-size: 6.0cqh,
+    $letter-spacing: 0.04em,
+    $line-height: 1.0,
+    $text-transform: uppercase,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.13em);
+  text-shadow: soft-drop-shadow(0.06, 0.25);
+  @include rise-in($element: 'word', $distance: 0.29em, $delay: var(--on-word-being-narrated-starts), $from-opacity: 0);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: 900;
+  font-size: calc(var(--tscaps-font-size, 6.0cqh) * 1.05);
+}

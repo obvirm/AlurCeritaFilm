@@ -1,0 +1,26 @@
+[
+  {
+    "id": "scale-in",
+    "element": "segment",
+    "values": {
+      "--entrance-scale": {
+        "kind": "number",
+        "amount": 0.96,
+        "unit": ""
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 1,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.28,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-scale-in"
+    ]
+  }
+]

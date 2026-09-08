@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:tscaps="https://tscaps.io/filters">
+  <defs>
+    <!--
+      Beast: outline + glow + drop-shadow, all in SVG.
+
+      The glow and shadow can spread well past the text. An SVG <filter>
+      clips to a region relative to the element's bbox, so style.scss pads
+      `.segment` (with a matching negative margin) to grow that bbox by the
+      effect's reach, keeping layout/alignment/hitzone untouched. This
+      region then only needs a little slack on top of that padded box.
+
+      SourceAlpha is the raw glyph, so the dilation and the glow stay
+      clean; the coloured fill rides in on SourceGraphic and lands on top.
+    -->
+    <filter id="beast-outline" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+      <tscaps:outline thickness="var(--tscaps-outline-thickness, 0.125)"
+                      ink="var(--tscaps-outline-color, #000)"/>
+
+      <!-- GLOW: soft coloured halo from the glyph. Sits below the outline,
+           so at radius 0 it collapses to the glyph and stays hidden under
+           the wider opaque outline — no halo until it spreads past it. -->
+      <feGaussianBlur in="SourceAlpha" stdDeviation="var(--tscaps-glow-radius, 0)em" result="glowSpread"/>
+      <feFlood flood-color="var(--tscaps-glow-color, #ffea00)" result="glowFlood"/>
+      <feComposite in="glowFlood" in2="glowSpread" operator="in" result="glow"/>
+
+      <!-- DROP SHADOW: fed the outline's silhouette rather than the raw
+           glyph, so the shadow is cast by the outlined text. -->
+      <tscaps:drop-shadow distance="var(--tscaps-filter-shadow-distance, 0.04)"
+                          blur="var(--tscaps-filter-shadow-blur, 0.04)"
+                          ink="var(--tscaps-shadow-color, #000)" in="outline-shape"/>
+
+      <!-- STACK bottom to top: shadow, glow, outline, crisp coloured fill. -->
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

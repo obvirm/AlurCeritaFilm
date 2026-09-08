@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rise-in",
+    "element": "line",
+    "values": {
+      "--entrance-rise": {
+        "kind": "number",
+        "amount": 0,
+        "unit": "em"
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.28,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-rise-in"
+    ]
+  }
+]

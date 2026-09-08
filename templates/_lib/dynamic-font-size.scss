@@ -1,0 +1,23 @@
+@use 'control';
+
+/**
+ * Renders short captions bigger than long ones — a one-word segment
+ * appears visually larger than a twelve-word one. Returns a scale
+ * multiplier the template applies via
+ * `font-size: calc(var(--tscaps-font-size) * ...)`.
+ *
+ * Declares the "Dynamic font size" toggle, whose ON state is the
+ * character-count threshold below which a segment grows, and reads
+ * `--segment-char-count` (emitted per segment by the engine).
+ *
+ * `$strength` controls how aggressively a segment grows below the
+ * threshold — higher means more growth per character. Typical range
+ * 0.06 (subtle) to 0.15 (aggressive). `$enabled` is the template's
+ * default for the toggle; the user keeps the final say.
+ */
+@function dynamic-font-size($strength: 0.15, $enabled: true) {
+  @return max(
+    1,
+    1 + (#{control.field('dynamic-font-size', $enabled)} - var(--segment-char-count, 999)) * $strength
+  );
+}

@@ -1,0 +1,51 @@
+@use '../_lib/animation/bob' as *;
+@use '../_lib/animation/fade-in' as *;
+@use '../_lib/glow' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Bungee',
+    $font-size: 3.5cqh,
+    $letter-spacing: 0.02em,
+    $line-height: 1.55,
+  );
+  @include fade-in($element: 'segment', $delay: var(--on-segment-starts), $from-opacity: 0, $duration: 0.25s);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* The offset block and the haze under it are what hold the caption against
+   the shot, so every rule that touches `text-shadow` carries them: the glow
+   below is stacked on top rather than in place of them. */
+$cast-shadow: 0.06em 0.06em 0 var(--tscaps-shadow-color, #000), 0 0.11em 0.28em rgba(0, 0, 0, 0.45);
+
+.word {
+  @include word-layout(0.14em);
+  text-shadow: $cast-shadow;
+  // Staggered off the word's place in the spoken line rather than its place in
+  // the DOM: words are emitted in the order they paint, which on a
+  // right-to-left line is the reverse of the order they are said.
+  @include bob(
+    $element: 'word',
+    $distance: 0.19em,
+    $delay: calc(var(--on-segment-starts, 0s) + var(--word-index, 0) * 0.10s),
+  );
+}
+
+/* The word being said lights up rather than merely changing colour, which is
+   the arcade sign this face comes from. It stays on this one word: `currentColor`
+   makes the light take the highlight, and the plain words are white, so glowing
+   those too would only soften the blocky edges the look is built on. */
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #00ffb3);
+  text-shadow: glow(0.1), $cast-shadow;
+}
+

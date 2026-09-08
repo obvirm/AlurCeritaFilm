@@ -1,0 +1,28 @@
+@use 'control';
+
+/**
+ * The soft `distance / blur / colour` shadow surface every template
+ * exposes through the same three `--tscaps-shadow-*` controls. Returns
+ * a space-separated shadow spec (`x y blur colour`), usable directly
+ * inside `text-shadow`, `box-shadow`, or a `filter: drop-shadow(...)`
+ * argument.
+ *
+ * Arguments set the template's own defaults for the three controls,
+ * and the controls come with the call — a template using this shadow
+ * gets the three sliders without declaring anything of its own.
+ *
+ * Composable in shadow stacks, as long as every call in one template
+ * passes the same defaults: they describe one shadow the stack repeats
+ * rather than several independent ones, and the build rejects a
+ * template that asks for two.
+ *
+ * Careful with `blur`: `text-shadow` and `box-shadow` read their third
+ * length as a radius, while `filter: drop-shadow()` reads it as a
+ * Gaussian standard deviation, which is half of that. The same number
+ * is twice as soft inside `drop-shadow()`.
+ */
+@function soft-drop-shadow($distance, $blur, $color: #000000) {
+  @return 0 control.field('shadow-distance', $distance)
+            control.field('shadow-blur', $blur)
+            control.field('shadow-color', $color);
+}

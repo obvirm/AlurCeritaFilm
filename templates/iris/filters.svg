@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:tscaps="https://tscaps.io/filters">
+  <defs>
+    <!--
+      The filter sits on `.word`, not on `.segment`: the segment owns
+      the watercolour mask painted in `.segment::before`, and a
+      segment-level dilation would also dilate the blob. Per-word
+      filtering scopes the outline to glyph silhouettes only. The
+      generous filter region accommodates the dilation reaching past
+      the word's text bbox.
+    -->
+    <filter id="brush-outline" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">
+      <tscaps:outline thickness="var(--tscaps-outline-thickness, 0.08)"
+                      ink="var(--tscaps-outline-color, #000000)"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

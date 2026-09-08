@@ -1,0 +1,38 @@
+@use '../_lib/animation/pop-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Bungee',
+    $font-size: 3.91cqh,
+    $font-style: italic,
+    $line-height: 1.05,
+    $text-transform: uppercase,
+  );
+  @include pop-in($element: 'segment', $amount: 0.1, $delay: var(--on-segment-starts));
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.12em);
+  -webkit-text-stroke: var(--tscaps-stroke-width, 0em) var(--tscaps-shadow-color, #000);
+  text-shadow:
+    calc(-0.02em * var(--tscaps-shadow-depth, 1)) calc(-0.02em * var(--tscaps-shadow-depth, 1)) 0 var(--tscaps-shadow-color, #000),
+    calc(0.04em * var(--tscaps-shadow-depth, 1)) calc(0.04em * var(--tscaps-shadow-depth, 1)) 0 var(--tscaps-shadow-color, #000),
+    calc(0.06em * var(--tscaps-shadow-depth, 1)) calc(0.06em * var(--tscaps-shadow-depth, 1)) 0 var(--tscaps-shadow-color, #000),
+    calc(0.08em * var(--tscaps-shadow-depth, 1)) calc(0.08em * var(--tscaps-shadow-depth, 1)) 0 var(--tscaps-shadow-color, #000),
+    calc(0.1em * var(--tscaps-shadow-depth, 1)) calc(0.1em * var(--tscaps-shadow-depth, 1)) 0 var(--tscaps-shadow-color, #000),
+    calc(0.12em * var(--tscaps-shadow-depth, 1)) calc(0.12em * var(--tscaps-shadow-depth, 1)) 0 var(--tscaps-shadow-color, #000);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffdd00);
+}

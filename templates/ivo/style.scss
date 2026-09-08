@@ -1,0 +1,57 @@
+@use '../_lib/animation/scale-in' as *;
+@use '../_lib/animation/wobble-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Anton',
+    $font-size: 5.08cqh,
+    $line-height: 1,
+    $text-transform: uppercase,
+    $color: null,
+  );
+  @include scale-in(
+    $element: 'segment',
+    $from: 0.94,
+    $peak: 1.03,
+    $delay: var(--on-segment-starts),
+    $from-opacity: 0,
+  );
+}
+
+/* `display: table` + `margin: 0 auto` makes each line shrink to its content
+   width and center within the segment. Without it, .line is full-width and
+   the BG becomes a wide bar instead of a label-shaped pill. */
+.line {
+  display: table;
+  margin: 0 auto;
+  padding: var(--tscaps-bg-padding-y, 0.09em) var(--tscaps-bg-padding-x, 0.23em);
+  border-radius: var(--tscaps-bg-radius, 0.09em);
+  position: relative;
+}
+
+/* Negative line-spacing lifts the second line so its BG overlaps the first.
+   Natural paint order (later sibling on top) puts the lime tape over the
+   black bar without needing explicit z-index. */
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.15em);
+}
+
+.line:first-child {
+  background: var(--tscaps-primary-bg, #000000);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+/* The tape lands crooked and stays crooked — the resting tilt is what
+   sells it as a strip stuck on by hand. */
+.line:last-child {
+  background: var(--tscaps-accent-bg, #adff2f);
+  color: var(--tscaps-accent-color, #000000);
+  transform: rotate(-2deg);
+  @include wobble-in($element: 'line', $swing: 9deg, $rest: -2deg, $delay: var(--on-segment-starts));
+}
+
+.word {
+  @include word-layout(0.12em);
+}

@@ -47,6 +47,14 @@ function expandTscapsFilter(svg: string): string {
     const result = g("result", "shadow");
     return `<feOffset in="${tin}" dx="0" dy="${distance}em" result="${result}-offset"/><feGaussianBlur in="${result}-offset" stdDeviation="${blur}em" result="${result}-spread"/><feFlood flood-color="${ink}" result="${result}-ink"/><feComposite in="${result}-ink" in2="${result}-spread" operator="in" result="${result}"/>`;
   });
+  out = out.replace(/<tscaps:chromatic-split\s+([^>]*?)\/>/g, (_m, attrs: string) => {
+    const g = (n: string, d: string) => { const m = attrs.match(new RegExp(`${n}="([^"]*)"`)); return m ? m[1] : d; };
+    const x = g("x", "0.045");
+    const y = g("y", "0.03");
+    const colorA = g("color-a", "#ff2e63");
+    const colorB = g("color-b", "#1fffd0");
+    return `<feOffset in="SourceAlpha" dx="${x}em" dy="${y}em" result="split-a-shape"/><feFlood flood-color="${colorA}" result="split-a-ink"/><feComposite in="split-a-ink" in2="split-a-shape" operator="in" result="split-a"/><feOffset in="SourceAlpha" dx="-${x}em" dy="-${y}em" result="split-b-shape"/><feFlood flood-color="${colorB}" result="split-b-ink"/><feComposite in="split-b-ink" in2="split-b-shape" operator="in" result="split-b"/>`;
+  });
   return out;
 }
 

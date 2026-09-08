@@ -1,0 +1,43 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Anton',
+    $font-size: 6.0cqh,
+    $text-align: left,
+    $line-height: 1,
+    $text-transform: uppercase,
+  );
+}
+
+.line {
+  display: block;
+  background-image: linear-gradient(
+    180deg,
+    var(--tscaps-primary-color, #ffffff) 0%,
+    color-mix(in srgb, var(--tscaps-primary-color, #ffffff), #000 18%) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: drop-shadow(soft-drop-shadow(0.03, 0.12));
+  @include rise-in(
+    $element: 'line',
+    $distance: 0em,
+    $from-opacity: 0,
+    $delay: var(--on-line-being-narrated-starts),
+    $duration: 0.28s,
+    $easing: ease-out,
+  );
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.09em);
+}
+
+.word {
+  @include word-layout(0.08em);
+}

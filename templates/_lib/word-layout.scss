@@ -1,0 +1,18 @@
+/**
+ * The universal `.word` layout: inline-block box, horizontal spacing
+ * controlled by `--tscaps-word-spacing`, and the `text-decoration`
+ * hook the underline/strikethrough toggles write into.
+ *
+ * The argument sets the template's own default spacing (used when the
+ * user hasn't set `--tscaps-word-spacing` explicitly). Typical range
+ * 0.08em to 0.16em — snug for compact templates, roomy for airy ones.
+ *
+ * Templates that break the shape (flex row via `column-gap` on the
+ * parent, or a background pill via `padding` + `background-color`)
+ * skip this mixin and write their `.word` rule by hand.
+ */
+@mixin word-layout($spacing) {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, $spacing);
+  text-decoration: var(--tscaps-text-decoration, none);
+}

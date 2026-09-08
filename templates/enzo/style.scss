@@ -1,0 +1,82 @@
+@use '../_lib/animation/fade-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* The leading carries a unit on purpose. Unitless would inherit as a ratio and
+   every descendant would recompute it against its own size, so a line holding
+   an accent word at 1.4em would open up by that much while a line of plain
+   words stayed shut. In `em` it resolves here, once, and inherits as the fixed
+   length every line then shares. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 5.2cqh,
+    $font-weight: 900,
+    $letter-spacing: -0.045em,
+    $line-height: 0.92em,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* The upward offset is deliberate rather than a sign error: the shade lifts
+   away from the glyphs instead of being cast by them, so the baseline stays
+   crisp while the block still separates from what sits behind it. It only
+   works at this colour — the same geometry in black reads as a smudge parked
+   over the text instead of as a lift. */
+.word {
+  @include word-layout(0.12em);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000000);
+  paint-order: stroke fill;
+  text-shadow: 0 -0.4em 0.8em var(--tscaps-shadow-color, #333333);
+  @include fade-in(
+    $element: 'word',
+    $delay: var(--on-word-being-narrated-starts),
+    $from-opacity: 0,
+    $duration: 0.16s,
+  );
+}
+
+/* Two axes over the words a tagger lifts, and a word takes both when it
+   qualifies for both: every lifted word grows and takes the accent colour with
+   the halo that makes it glow, while the ones carrying the sentence — its
+   punch word and its proper nouns — also change face. The default accent
+   colour is the text colour, so out of the box the mark is the size and the
+   halo.
+
+   A word that keeps the grotesque grows by less than one that switches to the
+   serif, and the rule below spends the rest of the scale on the switch. The
+   two land at the same optical size from opposite starts: the serif draws
+   shorter at a given size and needs the whole scale to catch up, while the
+   grotesque is already at full height and would overshoot on it. One control
+   moves both, because they read as one mark and drifting apart is the failure.
+
+   The two glow radii are the one place a fixed length was translated into a
+   proportional one, so they can only land exactly at one size. They are set
+   for the words that also take the larger face, since those are the ones a
+   viewer reads the glow on; a plain lifted word carries it proportionally
+   smaller. */
+.emphasis, .accent, .entity {
+  color: var(--tscaps-tag-color, #ffffff);
+  font-size: calc(0.85em * var(--tscaps-tag-font-scale, 1.4));
+  text-shadow:
+    0 0 0.087em var(--tscaps-tag-color, #ffffff),
+    0 0 0.368em var(--tscaps-shadow-color, #333333),
+    0 -0.4em 0.8em var(--tscaps-shadow-color, #333333);
+}
+
+/* The full scale, because this is where the face changes and the correction is
+   optical rather than a size jump: the serif's x-height is far shorter than the
+   grotesque's, and the two only read as one size once it is scaled all the way. */
+.emphasis, .entity {
+  font-family: var(--tscaps-tag-font-family, 'EB Garamond Variable');
+  font-weight: var(--tscaps-tag-font-weight, 400);
+  font-style: italic;
+  font-size: calc(1em * var(--tscaps-tag-font-scale, 1.4));
+}

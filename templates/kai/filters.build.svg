@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+    <filter id="chroma-active" x="-30%" y="-40%" width="160%" height="180%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="var(--tscaps-split-x, 0.045)em" dy="var(--tscaps-split-y, 0.03)em" result="split-a-shape"/>
+      <feFlood flood-color="var(--tscaps-split-color-a, #ff2e63)" result="split-a-ink"/>
+      <feComposite in="split-a-ink" in2="split-a-shape" operator="in" result="split-a"/>
+      <feOffset in="SourceAlpha" dx="-var(--tscaps-split-x, 0.045)em" dy="-var(--tscaps-split-y, 0.03)em" result="split-b-shape"/>
+      <feFlood flood-color="var(--tscaps-split-color-b, #1fffd0)" result="split-b-ink"/>
+      <feComposite in="split-b-ink" in2="split-b-shape" operator="in" result="split-b"/>
+
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.025)em" result="edge-shape"/>
+      <feFlood flood-color="var(--tscaps-outline-color, #000000)" result="edge-ink"/>
+      <feComposite in="edge-ink" in2="edge-shape" operator="in" result="edge"/>
+
+      <feMerge>
+        <feMergeNode in="split-b"/>
+        <feMergeNode in="split-a"/>
+        <feMergeNode in="edge"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

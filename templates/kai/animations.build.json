@@ -1,0 +1,21 @@
+[
+  {
+    "id": "jitter",
+    "element": "word",
+    "values": {
+      "--jitter-x": {
+        "kind": "number",
+        "amount": 0.02,
+        "unit": "em"
+      },
+      "--jitter-y": {
+        "kind": "number",
+        "amount": 0.012,
+        "unit": "em"
+      }
+    },
+    "keyframes": [
+      "tscaps-jitter"
+    ]
+  }
+]

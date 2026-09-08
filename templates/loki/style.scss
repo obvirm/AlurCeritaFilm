@@ -1,0 +1,38 @@
+@use '../_lib/animation/scale-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Komika Axis',
+    $font-size: 4.5cqh,
+    $letter-spacing: 0.02em,
+    $line-height: null,
+    $text-transform: uppercase,
+  );
+  filter: url(#beast-outline);
+  @include scale-in(
+    $element: 'segment',
+    $from: 0.96,
+    $from-opacity: 1,
+    $delay: var(--on-segment-starts),
+    $duration: 0.28s,
+    $easing: cubic-bezier(0.34, 1.4, 0.64, 1),
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.16em);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffea00);
+}

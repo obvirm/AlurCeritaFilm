@@ -1,0 +1,73 @@
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* `isolation: isolate` contains the `z-index: -1` of both the line
+   plate (`.line::before`) and the active-word pill
+   (`.word-being-narrated::before`) inside the segment's stacking
+   context. Without it, both pseudos escape past the overlay chrome
+   and land below the underlying `<video>`. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 3.0cqh,
+    $font-weight: 900,
+  );
+  position: relative;
+  isolation: isolate;
+}
+
+.line {
+  display: block;
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Translucent dark plate behind the line. */
+.line::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.25em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.20em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  opacity: var(--tscaps-bg-opacity, 0.55);
+  border-radius: var(--tscaps-bg-radius, 0.2em);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* `position: relative` without a z-index keeps `.word` as the
+   containing block for the active-word pill but does NOT create a
+   stacking context — so the pill's `z-index: -1` escapes to the
+   segment scope and lands above the line plate yet behind the text. */
+.word {
+  @include word-layout(0.15em);
+  position: relative;
+}
+
+.word-being-narrated::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-highlight-bg-padding-y, 0.1em) * -1)
+    calc(var(--tscaps-highlight-bg-padding-x, 0.18em) * -1);
+  background: var(--tscaps-highlight-bg-color, #2563eb);
+  border-radius: var(--tscaps-highlight-bg-radius, 0.08em);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.word-not-narrated-yet {
+  color: var(--tscaps-upcoming-color, #d8d8d8);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}

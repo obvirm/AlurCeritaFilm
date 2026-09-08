@@ -1,0 +1,35 @@
+@use '../_lib/animation/snap-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Caveat Variable',
+    $font-size: 6.0cqh,
+    $line-height: 1.05,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Each word starts hidden+rotated and snaps into place when narrated.
+   Overshoot easing gives the bouncy "snap" feel. */
+.word {
+  @include word-layout(0.12em);
+  text-shadow: 0.03em 0.04em 0 var(--tscaps-shadow-color, #000), 0 0.06em 0.19em rgba(0, 0, 0, 0.45);
+  @include snap-in($element: 'word', $rise: 0.31em, $rotation: 7, $scale: 0.7, $from-opacity: 0, $delay: var(--on-word-being-narrated-starts));
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffd966);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}

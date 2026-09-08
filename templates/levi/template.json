@@ -1,0 +1,54 @@
+{
+  "name": "Levi",
+  "category": "key-moments",
+  "typography": {
+    "fontFamily": "Anton",
+    "fontWeight": 800,
+    "fontSize": 6.0,
+    "wordSpacing": 0.08,
+    "lineSpacing": 0.09,
+    "textCase": "uppercase",
+    "textAlign": "left"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 80,
+      "minChars": 40
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 4,
+    "maxLines": 8,
+    "maxWidthRatio": 0.49
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.4,
+    "horizontalAlign": "left",
+    "horizontalOffset": 0.04
+  },
+  "unsupportedUserAgents": [
+    "firefox"
+  ],
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

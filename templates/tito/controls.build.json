@@ -1,0 +1,14 @@
+[
+  {
+    "id": "glow-radius",
+    "default": 0.1,
+    "label": "Glow",
+    "type": "float",
+    "unit": "em",
+    "group": "style",
+    "subgroup": "appearance",
+    "min": 0,
+    "max": 0.6,
+    "step": 0.01
+  }
+]

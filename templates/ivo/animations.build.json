@@ -1,0 +1,50 @@
+[
+  {
+    "id": "scale-in",
+    "element": "segment",
+    "values": {
+      "--entrance-scale": {
+        "kind": "number",
+        "amount": 0.94,
+        "unit": ""
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.32,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-scale-in"
+    ]
+  },
+  {
+    "id": "wobble-in",
+    "element": "line",
+    "values": {
+      "--wobble-rest": {
+        "kind": "number",
+        "amount": -2,
+        "unit": "deg"
+      },
+      "--wobble-swing": {
+        "kind": "number",
+        "amount": 9,
+        "unit": "deg"
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.6,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-wobble-in"
+    ]
+  }
+]

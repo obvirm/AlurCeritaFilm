@@ -1,0 +1,407 @@
+[
+  {
+    "id": "fade-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-fade-in",
+    "customProperties": [
+      "--entrance-fade",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-fade-in {\n  from {\n    opacity: var(--entrance-fade);\n  }\n  to {\n    opacity: 1;\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--entrance-fade: 0;\n--entrance-duration: 0.18s;\nanimation: tscaps-fade-in var(--entrance-duration) var(--on-segment-starts) ease both;",
+      "--on-line-being-narrated-starts": "--entrance-fade: 0;\n--entrance-duration: 0.18s;\nanimation: tscaps-fade-in var(--entrance-duration) var(--on-line-being-narrated-starts) ease both;",
+      "--on-word-being-narrated-starts": "--entrance-fade: 0;\n--entrance-duration: 0.18s;\nanimation: tscaps-fade-in var(--entrance-duration) var(--on-word-being-narrated-starts) ease both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.18
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><defs><linearGradient id=\"tscaps-icon-fade-in\" x1=\"0\" y1=\"12\" x2=\"0\" y2=\"36\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"currentColor\" stop-opacity=\"0\"/><stop offset=\"1\" stop-color=\"currentColor\"/></linearGradient></defs><rect x=\"12\" y=\"12\" width=\"24\" height=\"24\" rx=\"3\" fill=\"url(#tscaps-icon-fade-in)\"/></svg>"
+  },
+  {
+    "id": "rise-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-rise-in",
+    "customProperties": [
+      "--entrance-rise",
+      "--entrance-fade",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-rise-in {\n  from {\n    opacity: var(--entrance-fade);\n    transform: translateY(var(--entrance-rise));\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0);\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--entrance-rise: 0.2em;\n--entrance-fade: 0;\n--entrance-duration: 0.32s;\nanimation: tscaps-rise-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;",
+      "--on-line-being-narrated-starts": "--entrance-rise: 0.2em;\n--entrance-fade: 0;\n--entrance-duration: 0.32s;\nanimation: tscaps-rise-in var(--entrance-duration) var(--on-line-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;",
+      "--on-word-being-narrated-starts": "--entrance-rise: 0.2em;\n--entrance-fade: 0;\n--entrance-duration: 0.32s;\nanimation: tscaps-rise-in var(--entrance-duration) var(--on-word-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "from",
+        "label": "From",
+        "property": "--entrance-rise",
+        "part": "sign",
+        "type": "select",
+        "options": [
+          {
+            "value": "positive",
+            "label": "Below"
+          },
+          {
+            "value": "negative",
+            "label": "Above"
+          }
+        ],
+        "defaultValue": "positive"
+      },
+      {
+        "id": "distance",
+        "label": "Distance",
+        "property": "--entrance-rise",
+        "part": "magnitude",
+        "type": "number",
+        "unit": "em",
+        "min": 0,
+        "max": 1,
+        "step": 0.01,
+        "defaultValue": 0.2
+      },
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.32
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"11\" y=\"27\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\" opacity=\"0.2\"/><rect x=\"11\" y=\"15\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\"/><path d=\"M40 33V17M36 21l4-4 4 4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+  },
+  {
+    "id": "slide-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-slide-in",
+    "customProperties": [
+      "--entrance-slide",
+      "--entrance-fade",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-slide-in {\n  from {\n    opacity: var(--entrance-fade);\n    transform: translateX(var(--entrance-slide));\n  }\n  to {\n    opacity: 1;\n    transform: translateX(0);\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--entrance-slide: -1.5em;\n--entrance-fade: 0;\n--entrance-duration: 0.4s;\nanimation: tscaps-slide-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;",
+      "--on-line-being-narrated-starts": "--entrance-slide: -1.5em;\n--entrance-fade: 0;\n--entrance-duration: 0.4s;\nanimation: tscaps-slide-in var(--entrance-duration) var(--on-line-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;",
+      "--on-word-being-narrated-starts": "--entrance-slide: -1.5em;\n--entrance-fade: 0;\n--entrance-duration: 0.4s;\nanimation: tscaps-slide-in var(--entrance-duration) var(--on-word-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "from",
+        "label": "From",
+        "property": "--entrance-slide",
+        "part": "sign",
+        "type": "select",
+        "options": [
+          {
+            "value": "negative",
+            "label": "Left"
+          },
+          {
+            "value": "positive",
+            "label": "Right"
+          }
+        ],
+        "defaultValue": "negative"
+      },
+      {
+        "id": "distance",
+        "label": "Distance",
+        "property": "--entrance-slide",
+        "part": "magnitude",
+        "type": "number",
+        "unit": "em",
+        "min": 0,
+        "max": 4,
+        "step": 0.1,
+        "defaultValue": 1.5
+      },
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.4
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"6\" y=\"14\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\" opacity=\"0.16\"/><rect x=\"12\" y=\"14\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\" opacity=\"0.34\"/><rect x=\"18\" y=\"14\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\"/><path d=\"M15 38h18m-4-4 4 4-4 4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+  },
+  {
+    "id": "scale-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-scale-in",
+    "customProperties": [
+      "--entrance-scale",
+      "--entrance-fade",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-scale-in {\n  0% {\n    opacity: var(--entrance-fade);\n    transform: scale(var(--entrance-scale));\n  }\n  100% {\n    opacity: 1;\n    transform: scale(1);\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--entrance-scale: 0.95;\n--entrance-fade: 1;\n--entrance-duration: 0.32s;\nanimation: tscaps-scale-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.34, 1.35, 0.64, 1) both;",
+      "--on-line-being-narrated-starts": "--entrance-scale: 0.95;\n--entrance-fade: 1;\n--entrance-duration: 0.32s;\nanimation: tscaps-scale-in var(--entrance-duration) var(--on-line-being-narrated-starts) cubic-bezier(0.34, 1.35, 0.64, 1) both;",
+      "--on-word-being-narrated-starts": "--entrance-scale: 0.95;\n--entrance-fade: 1;\n--entrance-duration: 0.32s;\nanimation: tscaps-scale-in var(--entrance-duration) var(--on-word-being-narrated-starts) cubic-bezier(0.34, 1.35, 0.64, 1) both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "starts-at",
+        "label": "Starts at",
+        "property": "--entrance-scale",
+        "part": "whole",
+        "type": "number",
+        "min": 0.5,
+        "max": 1.5,
+        "step": 0.01,
+        "legend": "1 is its final size. Below that it grows into place, above it shrinks into place.",
+        "defaultValue": 0.95
+      },
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.32
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"14\" y=\"17\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\"/><path d=\"M36 12l7-7m0 6V5h-6M12 36l-7 7m0-6v6h6\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+  },
+  {
+    "id": "pop-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-pop-in",
+    "customProperties": [
+      "--entrance-pop",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-pop-in {\n  0% {\n    transform: scale(1);\n  }\n  40% {\n    transform: scale(calc(1 + var(--entrance-pop)));\n  }\n  100% {\n    transform: scale(1);\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--entrance-pop: 0.1;\n--entrance-duration: 0.35s;\nanimation: tscaps-pop-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;",
+      "--on-line-being-narrated-starts": "--entrance-pop: 0.1;\n--entrance-duration: 0.35s;\nanimation: tscaps-pop-in var(--entrance-duration) var(--on-line-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;",
+      "--on-word-being-narrated-starts": "--entrance-pop: 0.1;\n--entrance-duration: 0.35s;\nanimation: tscaps-pop-in var(--entrance-duration) var(--on-word-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "overshoot",
+        "label": "Overshoot",
+        "property": "--entrance-pop",
+        "part": "whole",
+        "type": "number",
+        "min": 0,
+        "max": 0.5,
+        "step": 0.01,
+        "legend": "0.1 swells the element to 110% before it settles back.",
+        "defaultValue": 0.1
+      },
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.35
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"14\" y=\"17\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\"/><path d=\"M24 12V6M38 14l4-4M10 14l-4-4M38 34l4 4M10 34l-4 4M24 36v6\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/></svg>"
+  },
+  {
+    "id": "snap-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-snap-in",
+    "customProperties": [
+      "--entrance-rise",
+      "--entrance-rotation",
+      "--entrance-scale",
+      "--entrance-fade",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-snap-in {\n  0% {\n    opacity: var(--entrance-fade);\n    transform: translateY(var(--entrance-rise)) rotate(calc(var(--entrance-rotation) * -1deg)) scale(var(--entrance-scale));\n  }\n  60% {\n    opacity: 1;\n    transform: translateY(calc(var(--entrance-rise) * -0.13)) rotate(calc(var(--entrance-rotation) * 0.43deg)) scale(calc(1 + (1 - var(--entrance-scale)) * 0.33));\n  }\n  100% {\n    opacity: 1;\n    transform: translateY(0) rotate(0deg) scale(1);\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--entrance-rise: 0.31em;\n--entrance-rotation: 7;\n--entrance-scale: 0.7;\n--entrance-fade: 0;\n--entrance-duration: 0.36s;\nanimation: tscaps-snap-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.34, 1.56, 0.64, 1) both;",
+      "--on-line-being-narrated-starts": "--entrance-rise: 0.31em;\n--entrance-rotation: 7;\n--entrance-scale: 0.7;\n--entrance-fade: 0;\n--entrance-duration: 0.36s;\nanimation: tscaps-snap-in var(--entrance-duration) var(--on-line-being-narrated-starts) cubic-bezier(0.34, 1.56, 0.64, 1) both;",
+      "--on-word-being-narrated-starts": "--entrance-rise: 0.31em;\n--entrance-rotation: 7;\n--entrance-scale: 0.7;\n--entrance-fade: 0;\n--entrance-duration: 0.36s;\nanimation: tscaps-snap-in var(--entrance-duration) var(--on-word-being-narrated-starts) cubic-bezier(0.34, 1.56, 0.64, 1) both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "distance",
+        "label": "Distance",
+        "property": "--entrance-rise",
+        "part": "whole",
+        "type": "number",
+        "unit": "em",
+        "min": 0,
+        "max": 1,
+        "step": 0.01,
+        "legend": "How far below its place it starts. The overshoot follows it.",
+        "defaultValue": 0.31
+      },
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.36
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"10\" y=\"28\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\" opacity=\"0.2\" transform=\"rotate(-14 20 35)\"/><rect x=\"10\" y=\"15\" width=\"20\" height=\"14\" rx=\"3\" fill=\"currentColor\"/><path d=\"M9 12l-2-3M31 12l2-3\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/><path d=\"M40 33V17m-4 4 4-4 4 4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+  },
+  {
+    "id": "wobble-in",
+    "kinds": [
+      "segment",
+      "line",
+      "word",
+      "decoration"
+    ],
+    "keyframeName": "tscaps-wobble-in",
+    "customProperties": [
+      "--wobble-rest",
+      "--wobble-swing",
+      "--entrance-duration"
+    ],
+    "keyframes": "@keyframes tscaps-wobble-in {\n  0% {\n    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing)));\n  }\n  30% {\n    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * -0.45));\n  }\n  55% {\n    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * 0.22));\n  }\n  78% {\n    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * -0.11));\n  }\n  100% {\n    transform: rotate(var(--wobble-rest));\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-segment-starts": "--wobble-rest: 0deg;\n--wobble-swing: 9deg;\n--entrance-duration: 0.6s;\nanimation: tscaps-wobble-in var(--entrance-duration) var(--on-segment-starts) ease-in-out both;",
+      "--on-line-being-narrated-starts": "--wobble-rest: 0deg;\n--wobble-swing: 9deg;\n--entrance-duration: 0.6s;\nanimation: tscaps-wobble-in var(--entrance-duration) var(--on-line-being-narrated-starts) ease-in-out both;",
+      "--on-word-being-narrated-starts": "--wobble-rest: 0deg;\n--wobble-swing: 9deg;\n--entrance-duration: 0.6s;\nanimation: tscaps-wobble-in var(--entrance-duration) var(--on-word-being-narrated-starts) ease-in-out both;"
+    },
+    "generatedBox": null,
+    "controls": [
+      {
+        "id": "swing",
+        "label": "Swing",
+        "property": "--wobble-swing",
+        "part": "whole",
+        "type": "number",
+        "unit": "deg",
+        "min": 0,
+        "max": 30,
+        "step": 1,
+        "defaultValue": 9
+      },
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--entrance-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.05,
+        "max": 1.5,
+        "step": 0.05,
+        "defaultValue": 0.6
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"14\" y=\"15\" width=\"20\" height=\"12\" rx=\"3\" fill=\"currentColor\" opacity=\"0.26\" transform=\"rotate(-18 24 21)\"/><rect x=\"14\" y=\"15\" width=\"20\" height=\"12\" rx=\"3\" fill=\"currentColor\" transform=\"rotate(11 24 21)\"/><path d=\"M15 41a9 9 0 0 1 18 0\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/><path d=\"M18.6 39.4 15 41.2l-.6-4M29.4 39.4 33 41.2l.6-4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+  },
+  {
+    "id": "flash-in",
+    "kinds": [
+      "word"
+    ],
+    "keyframeName": "tscaps-flash-in",
+    "customProperties": [
+      "--flash-duration",
+      "--flash-plate"
+    ],
+    "keyframes": "@keyframes tscaps-flash-in {\n  0%, 58% {\n    visibility: hidden;\n    opacity: 1;\n    animation-timing-function: step-end;\n  }\n  62% {\n    visibility: visible;\n    opacity: 0;\n  }\n  100% {\n    visibility: visible;\n    opacity: 1;\n  }\n}",
+    "declarationsByTimingVariable": {
+      "--on-word-being-narrated-starts": "--flash-duration: 0.1s;\n--flash-plate: #ffffff;\nposition: relative;\nanimation: tscaps-flash-in var(--flash-duration) var(--on-word-being-narrated-starts) ease both;"
+    },
+    "generatedBox": {
+      "pseudo": "::after",
+      "keyframes": "@keyframes tscaps-flash-in-plate {\n  0% {\n    opacity: 0;\n  }\n  8%, 58% {\n    opacity: 1;\n  }\n  62%, 100% {\n    opacity: 0;\n  }\n}",
+      "declarationsByTimingVariable": {
+        "--on-word-being-narrated-starts": "content: \"\";\nposition: absolute;\ninset: 0;\nbackground-color: var(--flash-plate);\nvisibility: visible;\nopacity: 0;\npointer-events: none;\nanimation: tscaps-flash-in-plate var(--flash-duration) var(--on-word-being-narrated-starts) linear both;"
+      }
+    },
+    "controls": [
+      {
+        "id": "duration",
+        "label": "Duration",
+        "property": "--flash-duration",
+        "part": "whole",
+        "type": "number",
+        "unit": "s",
+        "min": 0.1,
+        "max": 0.4,
+        "step": 0.01,
+        "defaultValue": 0.1
+      }
+    ],
+    "icon": "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"10\" y=\"21\" width=\"28\" height=\"13\" rx=\"3\" fill=\"currentColor\" opacity=\"0.25\"/><rect x=\"10\" y=\"21\" width=\"13\" height=\"13\" rx=\"3\" fill=\"currentColor\"/><path d=\"M11 15v3M16.5 12v5M22 15v3\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/></svg>"
+  }
+]

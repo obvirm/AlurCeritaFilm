@@ -1,0 +1,13 @@
+[
+  {
+    "id": "duration",
+    "label": "Duration",
+    "property": "--flash-duration",
+    "part": "whole",
+    "type": "number",
+    "unit": "s",
+    "min": 0.1,
+    "max": 0.4,
+    "step": 0.01
+  }
+]

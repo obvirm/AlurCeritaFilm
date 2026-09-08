@@ -1,0 +1,69 @@
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* `isolation: isolate` contains the `z-index: -1` of both pseudo
+   pills (`.segment::before` and `.line::before`) inside the segment's
+   stacking context. The shared overlay chrome deliberately forms no
+   stacking context so templates that need `mix-blend-mode` to mix
+   with the underlying `<video>` can do so — templates that paint
+   negative-z pseudos must opt into their own containment here. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 2.7cqh,
+  );
+  position: relative;
+  isolation: isolate;
+}
+
+.line {
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Pills live as absolutely-positioned pseudos rather than `padding` on
+   the line. Negative inset extends the pill `bg-padding-x/y` past the
+   line on each side without affecting layout — the line splitter
+   measures only the text. `z-index: -1` keeps the pill behind text;
+   `pointer-events: none` keeps it out of the click path. The opacity
+   calc against `--tscaps-pill-mode` toggles which pseudo is visible
+   (0 = per-line, 1 = block). */
+.line::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.23em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.46em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  border-radius: var(--tscaps-bg-radius, 0.15em);
+  z-index: -1;
+  pointer-events: none;
+  opacity: calc(1 - var(--tscaps-pill-mode, 0));
+}
+
+/* Mirror of the line pill, scoped to the whole segment. The opposite
+   opacity calc means exactly one pill is visible at a time. */
+.segment::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.23em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.46em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  border-radius: var(--tscaps-bg-radius, 0.15em);
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--tscaps-pill-mode, 0);
+}
+
+.word {
+  @include word-layout(0.15em);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffd700);
+}
+

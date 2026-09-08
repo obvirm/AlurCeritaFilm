@@ -1,0 +1,10 @@
+[
+  {
+    "id": "highlight-pulse",
+    "element": "word",
+    "values": {},
+    "keyframes": [
+      "tscaps-highlight-pulse"
+    ]
+  }
+]

@@ -1,0 +1,61 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Anton");
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 5.5cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  text-transform: var(--tscaps-text-transform, uppercase);
+  text-decoration: var(--tscaps-text-decoration, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  
+  filter: url(#glitch-outline);
+  
+  animation-name: tscaps-glitch-flicker;
+  animation-duration: var(--segment-duration);
+  animation-delay: var(--on-segment-starts);
+  animation-fill-mode: both;
+  animation-timing-function: step-end;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.28em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.12em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+@keyframes tscaps-glitch-flicker {
+  0%, 4% {
+    filter: url(#glitch-outline) url(#glitch);
+  }
+  5% {
+    filter: url(#glitch-outline);
+  }
+  6%, 9% {
+    filter: url(#glitch-outline) url(#glitch);
+  }
+  10% {
+    filter: url(#glitch-outline);
+  }
+  11%, 13% {
+    filter: url(#glitch-outline) url(#glitch);
+  }
+  14%, 100% {
+    filter: url(#glitch-outline);
+  }
+}

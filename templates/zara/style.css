@@ -1,0 +1,53 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Anton");
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 4.69cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0.025em);
+  line-height: 1.15;
+  text-transform: var(--tscaps-text-transform, uppercase);
+  color: var(--tscaps-primary-color, #ffffff);
+  --glitch-x: 0.03em;
+  --glitch-y: -0.02em;
+  --entrance-fade: 0;
+  --entrance-duration: 0.22s;
+  animation: tscaps-glitch-in var(--entrance-duration) var(--on-segment-starts) steps(2) both;
+}
+@keyframes tscaps-glitch-in {
+  0% {
+    opacity: var(--entrance-fade);
+    transform: translate(var(--glitch-x), var(--glitch-y));
+  }
+  50% {
+    opacity: 1;
+    transform: translate(calc(var(--glitch-x) * -1), calc(var(--glitch-y) * -1));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.1em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: var(--tscaps-split-x, 0.05em) var(--tscaps-split-x, 0.05em) 0 var(--tscaps-split-color-a, #ff00aa), calc(var(--tscaps-split-x, 0.05em) * -1) calc(var(--tscaps-split-x, 0.05em) * -1) 0 var(--tscaps-split-color-b, #00e5ff), -0.03em -0.03em 0 #000, 0.03em -0.03em 0 #000, -0.03em 0.03em 0 #000, 0.03em 0.03em 0 #000;
+  -webkit-text-stroke: 0.01em black;
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #fff200);
+}

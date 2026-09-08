@@ -1,0 +1,21 @@
+[
+  {
+    "id": "flash-in",
+    "element": "word",
+    "values": {
+      "--flash-duration": {
+        "kind": "number",
+        "amount": 0.1,
+        "unit": "s"
+      },
+      "--flash-plate": {
+        "kind": "text",
+        "text": "#ffffff"
+      }
+    },
+    "keyframes": [
+      "tscaps-flash-in",
+      "tscaps-flash-in-plate"
+    ]
+  }
+]

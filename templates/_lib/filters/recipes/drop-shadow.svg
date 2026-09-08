@@ -1,0 +1,49 @@
+<tscaps:recipe xmlns:tscaps="https://tscaps.io/filters" name="drop-shadow">
+  <!--
+    Soft shadow cast beneath whatever alpha it is given: offset it,
+    blur it, and ink it flat.
+
+    `distance` and `blur` are numbers of `em`, without the unit — the
+    recipe appends it and the runtime resolves it to px per render.
+    Pass literals for a fixed shadow, or `var()` reads of the
+    `shadow-distance`, `shadow-blur` and `shadow-color` controls to
+    make it tunable. The recipe reads no variable of its own and knows
+    no control by name, so calling it leaves no obligation behind
+    beyond the arguments passed.
+
+    Note that style-control values reach a filter unitless — the DOM
+    gets `0.06em`, the filter scope gets `0.06` — so a `var()` passed
+    here must resolve to a bare number, and its fallback must be bare
+    too.
+
+    `blur` is a Gaussian standard deviation, which is what
+    feGaussianBlur takes. A template arriving from CSS `text-shadow`
+    should halve the number it used there, since CSS defines its blur
+    radius as twice the deviation; one arriving from CSS
+    `drop-shadow()` should keep it, since that function's third length
+    is already a deviation. Calibrate the control's own range against
+    this recipe rather than expecting a number to carry over.
+
+    A Gaussian spreads roughly three standard deviations before it
+    fades out, so this needs a filter region far more generous than a
+    dilation does. On a word-sized box it will clip; give it a segment
+    and inflate that segment with `rendering.padding` in template.json,
+    the way every template with a blur already does.
+
+    Feeding it `SourceAlpha` casts the shadow of the raw glyph. Feeding
+    it an outline's dilated silhouette instead casts the shadow of the
+    outlined text, which is what reads correctly when both are present.
+  -->
+  <tscaps:param name="distance"/>
+  <tscaps:param name="blur"/>
+  <tscaps:param name="ink" default="#000000"/>
+  <tscaps:param name="in" default="SourceAlpha"/>
+  <tscaps:param name="result" default="shadow"/>
+
+  <feOffset in="{in}" dx="0"
+            dy="{distance}em" result="{result}-offset"/>
+  <feGaussianBlur in="{result}-offset"
+                  stdDeviation="{blur}em" result="{result}-spread"/>
+  <feFlood flood-color="{ink}" result="{result}-ink"/>
+  <feComposite in="{result}-ink" in2="{result}-spread" operator="in" result="{result}"/>
+</tscaps:recipe>

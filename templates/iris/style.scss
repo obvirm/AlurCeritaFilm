@@ -1,0 +1,54 @@
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Only the vertical bleed is real padding. The horizontal bleed
+     lives on the stroke pseudo below, because padding here is invisible
+     to the line splitter — it measures word widths against a budget
+     that never sees it — and at wide settings the stroke would push the
+     segment past the safe area the lines were fitted to. */
+  padding: var(--tscaps-mask-padding-y, 0.56em) 0;
+
+  @include segment-typography(
+    $font-family: 'Caveat Variable',
+    $font-size: 4.5cqh,
+    $letter-spacing: 0.02em,
+    $line-height: 1.4,
+  );
+}
+
+/* Watercolor stroke as alpha-only PNG mask. The whole segment (potentially
+   multi-line) sits inside one stroke; consumer tints via background-color.
+   Mask image flows through a single CSS variable so the user can swap the
+   bundled stroke for an uploaded one, and so the data URL is emitted just
+   once when the exporter inlines it. */
+.segment::before {
+  content: '';
+  position: absolute;
+  inset: 0 calc(var(--tscaps-mask-padding-x, 0.84em) * -1);
+  z-index: -1;
+  background-color: var(--tscaps-highlight-color, var(--tscaps-highlight-color-1, #a3d8f5));
+  -webkit-mask-image: var(--tscaps-mask, url('asset:marker-stroke'));
+  mask-image: var(--tscaps-mask, url('asset:marker-stroke'));
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transform: translateY(var(--tscaps-mask-offset-y, 0em));
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.16em);
+  filter: url(#brush-outline);
+}

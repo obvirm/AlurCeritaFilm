@@ -11,6 +11,8 @@ import {
   CompositeSegmentSplitter,
   BoundarySegmentSplitter,
   LimitByScaledCharsSegmentSplitter,
+  BoundaryScoreLimitByCharsSegmentSplitter,
+  FixedTailLineSplitter,
   SvgFilterDefinitionsParser,
   SvgFilterScope,
   SvgFilterBundle,
@@ -23,12 +25,14 @@ import {
   TEMPLATE_ID,
   TEMPLATE_JSON,
   TEMPLATE_CSS,
+  TEMPLATE_FONTS_CSS,
   TEMPLATE_FILTERS,
 } from './movie2short-template-bundle.generated';
 
 declare global {
   interface Window {
     renderMovie2short(): Promise<void>;
+    m2sSaveChunk(payload: { index: number; b64: string; last: boolean }): Promise<void>;
   }
 }
 
@@ -74,6 +78,11 @@ for (const s of TEMPLATE_JSON.segmentSplitters || []) {
       minChars: Number(s.minChars ?? 0),
       scale: 1,
     }));
+  } else if (s.type === 'boundary_score_limit_by_chars') {
+    splitterInstances.push(new BoundaryScoreLimitByCharsSegmentSplitter({
+      maxChars: Number(s.maxChars ?? 40),
+      minChars: Number(s.minChars ?? 0),
+    }));
   } else {
     console.warn(`[tscaps-template] splitter tidak didukung: ${s.type}`);
   }
@@ -102,9 +111,26 @@ const alignment = {
 // svg filters (jika template punya filters.svg)
 let svgFilters: any;
 if (TEMPLATE_FILTERS) {
+  // Scope filter = nilai mentah TANPA unit (filter SVG makan token polos,
+  // bukan nilai CSS — '0.12emem' invalid bikin outline hilang). Mirror
+  // SheetSvgFilterScopeProvider studio.
+  const FILTER_VALUES: Record<string, string> = {};
+  for (const c of TEMPLATE_JSON.styleControls || []) {
+    const v = c.default;
+    if (v === undefined || v === null) continue;
+    const key = `--tscaps-${c.id}`;
+    if (c.type === 'toggle') FILTER_VALUES[key] = v ? String(c.valueOn ?? '1') : String(c.valueOff ?? '0');
+    else FILTER_VALUES[key] = String(v);
+  }
   class TemplateSvgFilterScopeProvider implements SvgFilterScopeProvider {
-    scopeAt(_context: SvgFilterRenderContext): SvgFilterScope {
-      return SvgFilterScope.fromEntries(Object.entries(STYLE_VALUES));
+    scopeAt(context: SvgFilterRenderContext): SvgFilterScope {
+      const t = Number(context.currentTime ?? 0);
+      return SvgFilterScope.fromEntries(Object.entries({
+        ...FILTER_VALUES,
+        '--tscaps-tick': String(Math.floor(t * 30)),
+        '--tscaps-tick-60': String(Math.floor(t * 60)),
+        '--tscaps-time': String(t),
+      }));
     }
     lengthFactorsAt(context: SvgFilterRenderContext): SvgFilterLengthFactors {
       const pxPerCqh = context.renderHeightPx / 100;
@@ -129,16 +155,39 @@ window.renderMovie2short = async () => {
   const [videoResponse, srtResponse] = await Promise.all([fetch(videoUrl), fetch(srtUrl)]);
   if (!videoResponse.ok) throw new Error(`Video fetch failed: ${videoResponse.status}`);
   if (!srtResponse.ok) throw new Error(`SRT fetch failed: ${srtResponse.status}`);
+  // Font template harus ikut di-embed ke SVG (SVG-as-image tidak bisa baca
+  // font dokumen). Engine menanam url() jadi base64 via CssResourceEmbedder.
+  // TEMPLATE_FONTS_CSS ditanam saat generate bundle (Node) — bukan fetch,
+  // karena Vite dev mengubah fetch *.css menjadi modul JS HMR.
+  const fontsCss = TEMPLATE_FONTS_CSS || '';
+  console.log(`[tscaps-template] fonts.css: ${fontsCss.length} chars`);
+  // Pastikan font template ke-load sebelum render (tanpa ini fallback font
+  // bikin metrik teks beda -> overflow kepotong kayak kasus Loki/Komika).
+  try {
+    const fam = String(typo.fontFamily ?? 'sans-serif');
+    await Promise.all([
+      document.fonts.load(`400 16px '${fam}'`),
+      document.fonts.load(`700 16px '${fam}'`),
+      document.fonts.load(`italic 400 16px '${fam}'`),
+    ]);
+  } catch { /* abaikan, lanjut dengan font yang ada */ }
+  await document.fonts.ready;
   const [inputBlob, srt] = await Promise.all([videoResponse.blob(), srtResponse.text()]);
 
   const builder = new RenderPipelineBuilder()
     .withInputVideo(inputBlob)
     .withTranscriber(new SrtTranscriber(srt));
   if (segmentSplitter) builder.withSegmentSplitter(segmentSplitter);
+  if (line.type === 'fixed-tail') {
+    builder.withLineSplitter(new FixedTailLineSplitter({
+      tailWordCount: Number(line.tailWordCount ?? 3),
+    }));
+  } else {
+    builder.withDefaultLineSplitterConfig(lineConfig);
+  }
   builder
-    .withDefaultLineSplitterConfig(lineConfig)
     .withSubtitleStyle({
-      css: TEMPLATE_CSS,
+      css: `${fontsCss}\n${TEMPLATE_CSS}`,
       inlineStyles: STYLE_VALUES,
       alignment,
       rendering: {
@@ -155,8 +204,35 @@ window.renderMovie2short = async () => {
   const pipeline = builder.build();
   const result = await pipeline.run((event) => console.log(describe(event)));
   if (result.blob === null) throw new Error('tscaps returned no output blob');
-  triggerDownload(result.blob, filename);
+  await sendBlobChunked(result.blob);
 };
+
+const CHUNK_BYTES = 16 * 1024 * 1024;
+
+async function sendBlobChunked(blob: Blob): Promise<void> {
+  const total = blob.size;
+  let index = 0;
+  for (let offset = 0; offset < total; offset += CHUNK_BYTES) {
+    const slice = blob.slice(offset, offset + CHUNK_BYTES);
+    const b64 = await blobToBase64(slice);
+    await window.m2sSaveChunk({ index, b64, last: offset + CHUNK_BYTES >= total });
+    index += 1;
+  }
+  console.log(`[tscaps-template] sent ${index} chunks (${total} bytes)`);
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const url = String(reader.result || '');
+      const comma = url.indexOf(',');
+      resolve(comma >= 0 ? url.slice(comma + 1) : url);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 function describe(event: PipelineProgressEvent): string {
   if (event.stage === 'rendering') {
@@ -164,13 +240,4 @@ function describe(event: PipelineProgressEvent): string {
   }
   if ('status' in event) return `[tscaps-template] ${event.stage}: ${event.status}`;
   return `[tscaps-template] ${event.stage}`;
-}
-
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }

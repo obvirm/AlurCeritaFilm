@@ -1,0 +1,54 @@
+/**
+ * The universal `.segment` typography block: the 10-line font / colour /
+ * alignment surface every template exposes through the `--tscaps-*`
+ * controls, plus the `--tscaps-font-size-scale` hook so a per-word
+ * font-size given from the editor tracks any auto-shrink the template
+ * opts into via `dynamic-font-size`. Templates
+ * that don't opt into scaling leave the hook at its `1` fallback and
+ * render byte-identically to a plain `font-size: var(--tscaps-font-size, X)`.
+ *
+ * Arguments set the template's own defaults (used when the user hasn't
+ * bound the corresponding control). `$font-family` and `$font-size` are
+ * required; the rest have sensible defaults.
+ *
+ * `$rotation: false` skips the `rotate` line for templates whose layout
+ * would fight it (flex-line templates like luca / milo / luna).
+ * `$color: null` skips the `color` line for templates that paint colour
+ * elsewhere — background-pill on `.line` (tala), background-clip
+ * gradient (lyra), filter-based fill (noor), or per-state colours only
+ * (ivo, lena, selene). `$line-height: null` skips the `line-height`
+ * line for templates whose font's native metrics already give the
+ * desired leading (kai, loki, freya). Templates whose `.segment` needs
+ * extra properties (container-name, geometry vars, padding, background
+ * chrome, entrance animations) add them before or after the include;
+ * the mixin owns typography only.
+ */
+@mixin segment-typography(
+  $font-family,
+  $font-size,
+  $font-weight: 400,
+  $font-style: normal,
+  $text-align: center,
+  $letter-spacing: 0em,
+  $line-height: 1.2,
+  $text-transform: none,
+  $color: #ffffff,
+  $rotation: true
+) {
+  @if $rotation {
+    rotate: var(--tscaps-rotation, 0deg);
+  }
+  font-family: var(--tscaps-font-family, $font-family);
+  font-weight: var(--tscaps-font-weight, $font-weight);
+  font-style: var(--tscaps-font-style, $font-style);
+  text-align: var(--tscaps-text-align, $text-align);
+  font-size: calc(var(--tscaps-font-size, $font-size) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, $letter-spacing);
+  @if $line-height != null {
+    line-height: $line-height;
+  }
+  text-transform: var(--tscaps-text-transform, $text-transform);
+  @if $color != null {
+    color: var(--tscaps-primary-color, $color);
+  }
+}

@@ -1,0 +1,31 @@
+[
+  {
+    "id": "glitch-in",
+    "element": "segment",
+    "values": {
+      "--glitch-x": {
+        "kind": "number",
+        "amount": 0.03,
+        "unit": "em"
+      },
+      "--glitch-y": {
+        "kind": "number",
+        "amount": -0.02,
+        "unit": "em"
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.22,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-glitch-in"
+    ]
+  }
+]

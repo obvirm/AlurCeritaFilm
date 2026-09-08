@@ -1,0 +1,59 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Manrope Variable");
+  font-weight: var(--tscaps-font-weight, 500);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 3.6cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.25;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #e6d647);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.13em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 0.35em) var(--tscaps-shadow-color, #000000);
+}
+
+.segment.behind-actor-active {
+  translate: 0 calc((var(--tscaps-behind-y, 0.08) - var(--segment-anchor-y, 0.75)) * 100cqh + var(--segment-anchor-origin-y, 0%));
+  font-family: var(--tscaps-behind-font-family, "Anton");
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+.segment.behind-actor-active .line {
+  font-size: clamp(4cqh, var(--tscaps-behind-fill, 0.98) * 100cqw / var(--line-width-em, 8), 30cqh);
+  --entrance-rise: 0.18em;
+  --entrance-fade: 0;
+  --entrance-duration: 0.34s;
+  animation: tscaps-rise-in var(--entrance-duration) var(--on-line-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes tscaps-rise-in {
+  from {
+    opacity: var(--entrance-fade);
+    transform: translateY(var(--entrance-rise));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.segment.behind-actor-active .word {
+  text-shadow: 0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 0.35em) var(--tscaps-shadow-color, #000000), 0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 0.35em) var(--tscaps-shadow-color, #000000);
+}

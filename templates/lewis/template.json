@@ -1,0 +1,99 @@
+{
+  "name": "Lewis",
+  "category": "viral",
+  "typography": {
+    "fontFamily": "Gabarito Variable",
+    "fontWeight": 900,
+    "fontSize": 4.92,
+    "letterSpacing": 0,
+    "wordSpacing": 0.13,
+    "lineSpacing": 0,
+    "textCase": "none",
+    "textAlign": "center"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "tag-color",
+      "label": "Accent",
+      "type": "color",
+      "default": "#3be3f7",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "Colour of the punch words and the proper nouns, and of the halo around them."
+    },
+    {
+      "id": "tag-lift-color",
+      "label": "Lift",
+      "type": "color",
+      "default": "#52f73c",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "What the short supporting lifts take instead — the most frequent of the marks."
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#000000",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.1,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "limit_by_words",
+      "maxWords": 1
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.64,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    },
+    {
+      "type": "emoji",
+      "enabled": true,
+      "size": 1.6,
+      "gap": 0.5
+    }
+  ]
+}

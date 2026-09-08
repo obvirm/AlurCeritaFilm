@@ -1,0 +1,52 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Bebas Neue");
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 6cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0.04em);
+  line-height: 1;
+  text-transform: var(--tscaps-text-transform, uppercase);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.13em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 0.25em) var(--tscaps-shadow-color, #000000);
+  --entrance-rise: 0.29em;
+  --entrance-fade: 0;
+  --entrance-duration: 0.32s;
+  animation: tscaps-rise-in var(--entrance-duration) var(--on-word-being-narrated-starts) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes tscaps-rise-in {
+  from {
+    opacity: var(--entrance-fade);
+    transform: translateY(var(--entrance-rise));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: 900;
+  font-size: calc(var(--tscaps-font-size, 6cqh) * 1.05);
+}

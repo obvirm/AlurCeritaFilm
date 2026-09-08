@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+    <filter id="beast-outline" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.125)em" result="outline-shape"/>
+      <feFlood flood-color="var(--tscaps-outline-color, #000)" result="outline-ink"/>
+      <feComposite in="outline-ink" in2="outline-shape" operator="in" result="outline"/>
+
+
+      <feGaussianBlur in="SourceAlpha" stdDeviation="var(--tscaps-glow-radius, 0)em" result="glowSpread"/>
+      <feFlood flood-color="var(--tscaps-glow-color, #ffea00)" result="glowFlood"/>
+      <feComposite in="glowFlood" in2="glowSpread" operator="in" result="glow"/>
+
+
+      <feOffset in="outline-shape" dx="0"
+                dy="var(--tscaps-filter-shadow-distance, 0.04)em" result="shadow-offset"/>
+      <feGaussianBlur in="shadow-offset"
+                      stdDeviation="var(--tscaps-filter-shadow-blur, 0.04)em" result="shadow-spread"/>
+      <feFlood flood-color="var(--tscaps-shadow-color, #000)" result="shadow-ink"/>
+      <feComposite in="shadow-ink" in2="shadow-spread" operator="in" result="shadow"/>
+
+
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

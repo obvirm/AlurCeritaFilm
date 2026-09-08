@@ -1,0 +1,48 @@
+@charset "UTF-8";
+
+.segment {
+  font-family: var(--tscaps-font-family, "Poppins");
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 5cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.05;
+  text-transform: var(--tscaps-text-transform, uppercase);
+  color: var(--tscaps-primary-color, #ffffff);
+  text-decoration: var(--tscaps-text-decoration, none);
+  position: relative;
+  display: inline-block;
+  padding: 0.1em 0.35em;
+  overflow: hidden;
+}
+
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.14em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  mix-blend-mode: difference;
+  animation: tscaps-pulse-word-in 0.18s var(--on-line-being-narrated-starts) cubic-bezier(0.2, 0.9, 0.1, 1) both;
+}
+
+@keyframes tscaps-pulse-word-in {
+  from {
+    transform: translateY(var(--tscaps-word-rise, 0.5em));
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

@@ -41,8 +41,8 @@ const CFG = {
   // TTS via audio.cpp (audiocpp_cli.exe — engine C++/ggml, batch mode, GPU).
   // Orkestrasi Node murni (tools/audiocpp_manifest_tts.mjs) — TANPA Python.
   ttsScript: path.join(ROOT, "tools", "audiocpp_manifest_tts.mjs"),
-  audiocppExe: process.env.AUDIOCPP_EXE || path.join(ROOT, "sandbox", "audio-cpp", "bin", "audiocpp_cli.exe"),
-  audiocppModelSpecs: process.env.AUDIOCPP_MODEL_SPECS || path.join(ROOT, "sandbox", "audio-cpp", "model_specs"),
+  audiocppExe: process.env.AUDIOCPP_EXE || path.join(ROOT, "tts", "bin", "audiocpp_cli.exe"),
+  audiocppModelSpecs: process.env.AUDIOCPP_MODEL_SPECS || path.join(ROOT, "tts", "model_specs"),
   audiocppBackend: process.env.AUDIOCPP_BACKEND || "cuda",
   audiocppModel: process.env.AUDIOCPP_MODEL || path.join(ROOT, "models", "OmniVoice") || (() => {
     // Auto-resolve model OmniVoice dari snapshot terbaru. Cek beberapa lokasi
@@ -63,11 +63,10 @@ const CFG = {
   })(),
   refAudio: path.join(ROOT, "data", "reference", "test_snippet.wav"),
   refText: path.join(ROOT, "data", "reference", "test_snippet.txt"),
-  // tscaps (headless caption via Playwright + Chrome — sandbox di repo)
-  tscapsExamples: process.env.TSCAPS_EXAMPLES_DIR || path.resolve(ROOT, "..", "tscaps", "packages", "engine", "examples"),
-  tscapsTemplates: process.env.TSCAPS_TEMPLATES_DIR || path.resolve(ROOT, "..", "tscaps", "templates"),
+  // tscaps (headless caption via Playwright + Chrome — template milik repo sendiri)
+  tscapsTemplates: process.env.TSCAPS_TEMPLATES_DIR || path.join(ROOT, "templates"),
   tscapsChrome: process.env.TSCAPS_CHROME_PATH || (() => {
-    const base = path.join(ROOT, "sandbox", "chromium");
+    const base = path.join(ROOT, "browser");
     try {
       const dirs = fs.readdirSync(base).filter((d) => d.startsWith("chromium-"));
       if (dirs.length) {
@@ -78,7 +77,7 @@ const CFG = {
     } catch {}
     return path.join(base, "chromium-1234", "chrome-win64", "chrome.exe");
   })(),
-  playwrightBrowsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(ROOT, "sandbox", "chromium"),
+  playwrightBrowsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(ROOT, "browser"),
 };
 
 await fsp.mkdir(UPLOAD_DIR, { recursive: true });
@@ -405,7 +404,7 @@ async function runPipeline(job, input) {
       const finalCaptioned = path.join(partDir, capName);
       try {
         await run(job, `${partTag}CAPTION TSCAPS (${tpl})`, process.execPath, [
-          CFG.tsxCli, "cli/render-movie2short-template.ts",
+          CFG.tsxCli, "tscaps-renderer/render-movie2short-template.ts",
           "--template", tpl,
           "--video", finalShort,
           "--manifest", partManifest,
@@ -414,8 +413,7 @@ async function runPipeline(job, input) {
           "--width", "1080",
           "--height", "1920",
         ], {
-          cwd: CFG.tscapsExamples,
-          env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome, PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath },
+          env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome, PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath, TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates },
         });
         pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
         job.artifacts.push({ name: rel(finalCaptioned), path: finalCaptioned, kind: "video" });

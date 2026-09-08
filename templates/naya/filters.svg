@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:tscaps="https://tscaps.io/filters">
+  <defs>
+    <!--
+      The filter sits on `.segment`, not `.word`, so neighbouring
+      words don't clip each other's outline along the word boundary
+      at thick settings; the per-word pop scale is part of the
+      rasterised source the segment-level filter sees, so the outline
+      grows with the pop. `rendering.padding` on the template inflates
+      the segment bbox enough for the dilation to land inside the
+      filter region.
+    -->
+    <filter id="hype-outline" x="-10%" y="-20%" width="120%" height="140%" color-interpolation-filters="sRGB">
+      <tscaps:outline thickness="var(--tscaps-outline-thickness, 0.14)"
+                      ink="var(--tscaps-outline-color, #000000)"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "shimmer",
+    "element": "segment",
+    "values": {
+      "--shimmer-travel": {
+        "kind": "number",
+        "amount": 400,
+        "unit": "%"
+      }
+    },
+    "keyframes": [
+      "tscaps-shimmer"
+    ]
+  }
+]

@@ -1,0 +1,39 @@
+@use '../_lib/animation/settle-in' as *;
+@use '../_lib/dynamic-font-size' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  --tscaps-font-size-scale: #{dynamic-font-size(0.15)};
+  @include segment-typography(
+    $font-family: 'Montserrat Variable',
+    $font-size: 3.0cqh,
+    $font-weight: 600,
+  );
+  @include settle-in($element: 'segment', $distance: -0.08em, $delay: var(--on-segment-starts), $from-opacity: 0.8, $duration: 0.3s);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.13em);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0.16em) var(--tscaps-outline-color, #000);
+  paint-order: stroke fill;
+  text-shadow: soft-drop-shadow(0.08, 0.4);
+}
+
+.quote {
+  color: var(--tscaps-quote-color, #e6d647);
+  font-style: var(--tscaps-quote-italic, italic);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: var(--tscaps-tag-weight, 900);
+}

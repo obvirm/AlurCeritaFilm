@@ -1,0 +1,66 @@
+[
+  {
+    "id": "slide-in",
+    "element": "word",
+    "values": {
+      "--entrance-slide": {
+        "kind": "number",
+        "amount": 0,
+        "unit": "em"
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "text",
+        "text": "var(--luca-anim-duration)"
+      }
+    },
+    "keyframes": [
+      "tscaps-slide-in"
+    ]
+  },
+  {
+    "id": "slide-in",
+    "element": "line",
+    "values": {
+      "--entrance-slide": {
+        "kind": "number",
+        "amount": 0,
+        "unit": "em"
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "text",
+        "text": "var(--luca-anim-duration)"
+      }
+    },
+    "keyframes": [
+      "tscaps-slide-in"
+    ]
+  },
+  {
+    "id": "fade-in",
+    "element": "word",
+    "values": {
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "text",
+        "text": "var(--luca-anim-duration)"
+      }
+    },
+    "keyframes": [
+      "tscaps-fade-in"
+    ]
+  }
+]

@@ -1,0 +1,81 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Anton");
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 5.08cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1;
+  text-transform: var(--tscaps-text-transform, uppercase);
+  --entrance-scale: 0.94;
+  --entrance-fade: 0;
+  --entrance-duration: 0.32s;
+  animation: tscaps-scale-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.34, 1.35, 0.64, 1) both;
+}
+@keyframes tscaps-scale-in {
+  0% {
+    opacity: var(--entrance-fade);
+    transform: scale(var(--entrance-scale));
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.line {
+  display: table;
+  margin: 0 auto;
+  padding: var(--tscaps-bg-padding-y, 0.09em) var(--tscaps-bg-padding-x, 0.23em);
+  border-radius: var(--tscaps-bg-radius, 0.09em);
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.15em);
+}
+
+.line:first-child {
+  background: var(--tscaps-primary-bg, #000000);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+.line:last-child {
+  background: var(--tscaps-accent-bg, #adff2f);
+  color: var(--tscaps-accent-color, #000000);
+  transform: rotate(-2deg);
+  --wobble-rest: -2deg;
+  --wobble-swing: 9deg;
+  --entrance-duration: 0.6s;
+  animation: tscaps-wobble-in var(--entrance-duration) var(--on-segment-starts) ease-in-out both;
+}
+@keyframes tscaps-wobble-in {
+  0% {
+    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing)));
+  }
+  30% {
+    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * -0.45));
+  }
+  55% {
+    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * 0.22));
+  }
+  78% {
+    transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * -0.11));
+  }
+  100% {
+    transform: rotate(var(--wobble-rest));
+  }
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.12em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}

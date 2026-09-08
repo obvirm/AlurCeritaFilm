@@ -1,0 +1,21 @@
+[
+  {
+    "id": "fade-in",
+    "element": "word",
+    "values": {
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.16,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-fade-in"
+    ]
+  }
+]

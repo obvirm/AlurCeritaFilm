@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+    <filter id="hype-outline" x="-10%" y="-20%" width="120%" height="140%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.14)em" result="outline-shape"/>
+      <feFlood flood-color="var(--tscaps-outline-color, #000000)" result="outline-ink"/>
+      <feComposite in="outline-ink" in2="outline-shape" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

@@ -1,0 +1,75 @@
+@use '../_lib/segment-typography' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'JetBrains Mono Variable',
+    $font-size: 2.6cqh,
+    $line-height: 1.4,
+    $color: #d4d4d4,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.25em);
+}
+
+/* Word-by-word background. At the default `--tscaps-word-spacing: 0`
+   adjacent word boxes touch and read as a single continuous strip;
+   raising word-spacing breaks the strip into discrete pills. */
+.word {
+  display: inline-block;
+  padding:
+    var(--tscaps-word-padding-y, 0.3em)
+    var(--tscaps-word-padding-x, 0.35em);
+  margin: 0 var(--tscaps-word-spacing, -0.02em);
+  background-color: var(--tscaps-bg-color, #1e1e1e);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+/* Rounded ends of each line, selected by position rather than by
+   `.first-word-in-line` / `.last-word-in-line`: those name the first and
+   last word *spoken*, which on a right-to-left line are the boxes at the
+   right and left ends — rounding them would carve two notches out of the
+   middle of the strip and leave its real ends square. Rounding is
+   geometry, so it follows the ends of the painted strip.
+
+   Longhand properties so both rules stack cleanly on a single-word line
+   (all four corners rounded) instead of overwriting each other. */
+.word:first-child {
+  border-top-left-radius: var(--tscaps-bg-radius, 0.18em);
+  border-bottom-left-radius: var(--tscaps-bg-radius, 0.18em);
+}
+
+.word:last-child {
+  border-top-right-radius: var(--tscaps-bg-radius, 0.18em);
+  border-bottom-right-radius: var(--tscaps-bg-radius, 0.18em);
+}
+
+.word-not-narrated-yet {
+  color: var(--tscaps-upcoming-color, #808080);
+}
+
+/* Colour and background only. A weight change would be free on the
+   monospace default, but `font-family` is the reader's to pick: under any
+   proportional family the narrated word takes a different width and shoves
+   every word after it sideways, once per word, for the whole line. */
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #569cd6);
+  background-color: var(--tscaps-highlight-bg-color, #252526);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #d4d4d4);
+}
+
+/* The peak color only kicks in once the word has been reached by the
+   playhead — an upcoming `.peak` reads as a regular upcoming word so
+   the tag doesn't spoil the reveal. */
+.word-being-narrated.peak,
+.word-already-narrated.peak {
+  background-color: var(--tscaps-peak-bg-color, #00008b);
+}

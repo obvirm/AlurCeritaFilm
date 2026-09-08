@@ -1,0 +1,52 @@
+@use '../_lib/animation/shimmer' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Bricolage Grotesque Variable',
+    $font-size: 6.0cqh,
+    $font-weight: 800,
+    $letter-spacing: -0.015em,
+    $color: null,
+  );
+
+  background-image: linear-gradient(
+    calc(var(--tscaps-gradient-angle, 100) * 1deg),
+    var(--tscaps-gradient-color-1, #ff6ec4),
+    var(--tscaps-gradient-color-2, #4dd4ff),
+    var(--tscaps-gradient-color-3, #b6f56d),
+    var(--tscaps-gradient-color-4, #ffc857),
+    var(--tscaps-gradient-color-1, #ff6ec4)
+  );
+  background-size: 400% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  filter:
+    drop-shadow(0 0.04em 0.08em rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 0.22em rgba(0, 0, 0, 0.35))
+    saturate(var(--tscaps-saturation, 1));
+
+  @include shimmer(
+    $element: 'segment',
+    $travel: 400%,
+    $duration: calc(6s / var(--tscaps-shimmer-speed, 1)),
+    $delay: var(--on-segment-starts, 0s),
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.1em);
+  text-decoration-color: var(--tscaps-gradient-color-1, #ff6ec4);
+}

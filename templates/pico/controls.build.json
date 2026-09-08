@@ -1,0 +1,12 @@
+[
+  {
+    "id": "show-caret",
+    "default": false,
+    "label": "Show caret",
+    "type": "toggle",
+    "group": "style",
+    "subgroup": "appearance",
+    "valueOn": "block",
+    "valueOff": "none"
+  }
+]

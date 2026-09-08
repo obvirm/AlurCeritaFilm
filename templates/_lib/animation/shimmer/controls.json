@@ -1,0 +1,13 @@
+[
+  {
+    "id": "travel",
+    "label": "Travel",
+    "property": "--shimmer-travel",
+    "part": "whole",
+    "type": "number",
+    "unit": "%",
+    "min": 0,
+    "max": 1200,
+    "step": 25
+  }
+]

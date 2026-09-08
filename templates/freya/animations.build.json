@@ -1,0 +1,10 @@
+[
+  {
+    "id": "glitch-flicker",
+    "element": "segment",
+    "values": {},
+    "keyframes": [
+      "tscaps-glitch-flicker"
+    ]
+  }
+]

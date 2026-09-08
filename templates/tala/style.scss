@@ -1,0 +1,52 @@
+@use '../_lib/segment-typography' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Anton',
+    $font-size: 4.0cqh,
+    $letter-spacing: 0.03em,
+    $line-height: 1.25,
+    $text-transform: uppercase,
+    $color: null,
+  );
+}
+
+.line {
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding: var(--tscaps-bg-padding-y, 0.11em) var(--tscaps-bg-padding-x, 0.28em);
+  background: var(--tscaps-bg-color, #1a1a1a);
+  color: var(--tscaps-primary-color, #ffffff);
+  border-radius: var(--tscaps-bg-radius, 0.17em);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.line:has(:is(.emphasis, .accent, .entity)) {
+  background: var(--tscaps-highlight-bg-color, #ffd700);
+  color: var(--tscaps-highlight-text-color, #000000);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 calc(var(--tscaps-word-spacing, 0.35em) / 2);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+/* Trim the half-gap the words carry at the two ends of the strip, so the
+   line's padding is the only thing between the text and the background's
+   edge. Selected by position, not by `.first-word-in-line` /
+   `.last-word-in-line`: those name the first and last word *spoken*,
+   which on a right-to-left line are the boxes at the right and left ends,
+   and the gap would be trimmed off the middle instead. */
+.word:first-child {
+  margin-left: 0;
+}
+
+.word:last-child {
+  margin-right: 0;
+}

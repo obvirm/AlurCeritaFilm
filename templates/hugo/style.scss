@@ -1,0 +1,43 @@
+@use '../_lib/animation/flash-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Gabarito Variable',
+    $font-size: 3.5cqh,
+    $font-weight: 600,
+    $letter-spacing: -0.065em,
+    $line-height: 0.92,
+    $text-transform: uppercase,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* The halo is the same colour as the text, so it does not separate the caption
+   from what is behind it — it blooms. Legibility over a bright shot is the
+   outline's job here, which is why that control is present and starts at zero
+   rather than being left out. */
+.word {
+  @include word-layout(0.13em);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #1a1a1a);
+  paint-order: stroke fill;
+  text-shadow: 0 0 var(--tscaps-shadow-blur, 0.267em) var(--tscaps-shadow-color, #ffffff);
+  @include flash-in($element: 'word', $delay: var(--on-word-being-narrated-starts));
+}
+
+/* A lifted word takes its colour and blooms in that same colour instead of the
+   caption's, which is the whole of the mark: no size, no face, no weight. The
+   default is the text colour, so a caption shows nothing until someone picks
+   one — deliberate for a look whose subject is the setting itself. */
+.emphasis, .accent, .entity {
+  color: var(--tscaps-tag-color, #ffffff);
+  text-shadow: 0 0 var(--tscaps-shadow-blur, 0.267em) var(--tscaps-tag-color, #ffffff);
+}

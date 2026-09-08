@@ -1,0 +1,87 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Manrope Variable',
+    $font-size: 3.6cqh,
+    $font-weight: 500,
+    $line-height: 1.25,
+    $color: #e6d647,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.13em);
+  text-shadow: soft-drop-shadow(0.06, 0.35);
+}
+
+/* ---- Behind the actor ------------------------------------------------
+   A different typographic register, not a louder version of the quiet
+   one: the caption takes its own place in the frame, changes face, and
+   is sized to the video's width instead of to the size slider. Face,
+   case and size are the template's here rather than the user's — they
+   are what the register is, and a caption half in one and half in the
+   other reads as neither. The face is still a control, just its own;
+   colour, alignment, spacing and rotation land in both states.
+
+   Anton carries a single weight, so the register leans on its own
+   condensed cut rather than asking for a heavier one the family does
+   not have and the browser would fake. */
+
+/* An absolute place in the frame, not a nudge away from wherever the
+   quiet captions were put. `--segment-anchor-y` says where the anchor
+   landed and `--segment-anchor-origin-y` which part of the box was put
+   on it, so undoing both leaves the box's top edge at `behind-y` — the
+   same spot however tall the caption grew, and unmoved when the reader
+   repositions the quiet captions. */
+.segment.behind-actor-active {
+  translate: 0 calc(
+    (var(--tscaps-behind-y, 0.08) - var(--segment-anchor-y, 0.75)) * 100cqh
+    + var(--segment-anchor-origin-y, 0%)
+  );
+  font-family: var(--tscaps-behind-font-family, 'Anton');
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+/* The size comes out of the line's own measured width, so a line fills
+   the frame whatever letters it holds — `--line-width-em` is what the
+   text actually costs at one em, and dividing the target width by it
+   lands the size that reaches exactly that target. Character counting
+   used to stand in for this and could not: the same count is half again
+   as wide in round letters as in narrow ones.
+
+   The ceiling is what keeps this sane off a vertical frame. On a 16:9
+   the same line asks for a size that would eat most of the height, so
+   the cap takes over and the caption stops filling the width —
+   degrading to "large" instead of to "broken". It sits where it does
+   because a caption is one line here: a stack of three had to share the
+   frame's height between them, one does not. */
+.segment.behind-actor-active .line {
+  font-size: clamp(4cqh, calc(var(--tscaps-behind-fill, 0.98) * 100cqw / var(--line-width-em, 8)), 30cqh);
+  @include rise-in(
+    $element: 'line',
+    $distance: 0.18em,
+    $delay: var(--on-line-being-narrated-starts),
+    $from-opacity: 0,
+    $duration: 0.34s,
+  );
+}
+
+/* Deeper than the quiet state's: the caption crosses the busiest part
+   of the frame, and the actor's edge runs through the glyphs. */
+.segment.behind-actor-active .word {
+  text-shadow: soft-drop-shadow(0.06, 0.35), soft-drop-shadow(0.06, 0.35);
+}

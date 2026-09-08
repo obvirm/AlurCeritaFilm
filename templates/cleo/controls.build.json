@@ -1,0 +1,45 @@
+[
+  {
+    "id": "dynamic-font-size",
+    "default": true,
+    "label": "Dynamic font size",
+    "type": "toggle",
+    "group": "style",
+    "subgroup": "appearance",
+    "valueOn": "12",
+    "valueOff": "0",
+    "legend": "Grows the font size on short captions so they fill the screen."
+  },
+  {
+    "id": "shadow-distance",
+    "default": 0.06,
+    "label": "Shadow distance",
+    "type": "float",
+    "unit": "em",
+    "group": "style",
+    "subgroup": "appearance",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  {
+    "id": "shadow-blur",
+    "default": 1.2,
+    "label": "Shadow blur",
+    "type": "float",
+    "unit": "em",
+    "group": "style",
+    "subgroup": "appearance",
+    "min": 0,
+    "max": 2,
+    "step": 0.01
+  },
+  {
+    "id": "shadow-color",
+    "default": "#000000",
+    "label": "Shadow",
+    "type": "color",
+    "group": "style",
+    "subgroup": "colors"
+  }
+]

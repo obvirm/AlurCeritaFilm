@@ -1,0 +1,59 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Gabarito Variable");
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 4.92cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.2;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  --entrance-scale: 0.909;
+  --entrance-fade: 1;
+  --entrance-duration: 0.1s;
+  animation: tscaps-scale-in var(--entrance-duration) var(--on-segment-starts) cubic-bezier(0.1, 0.01, 0, 1.14) both;
+}
+@keyframes tscaps-scale-in {
+  0% {
+    opacity: var(--entrance-fade);
+    transform: scale(var(--entrance-scale));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.13em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0.1em) var(--tscaps-outline-color, #000000);
+  paint-order: stroke fill;
+  text-shadow: 0 0 0.127em var(--tscaps-shadow-color, #000000), 0 0.111em 0.159em var(--tscaps-shadow-color, #000000), 0 0 0.127em var(--tscaps-shadow-color, #000000), 0 0.111em 0.159em var(--tscaps-shadow-color, #000000);
+}
+
+.emphasis, .entity {
+  color: var(--tscaps-tag-color, #3be3f7);
+  text-shadow: 0 0 0.127em var(--tscaps-tag-color, #3be3f7), 0 0.111em 0.159em var(--tscaps-shadow-color, #000000), 0 0 0.127em var(--tscaps-tag-color, #3be3f7), 0 0.111em 0.159em var(--tscaps-shadow-color, #000000);
+}
+
+.accent {
+  color: var(--tscaps-tag-lift-color, #52f73c);
+  text-shadow: 0 0 0.127em var(--tscaps-tag-lift-color, #52f73c), 0 0.111em 0.159em var(--tscaps-shadow-color, #000000), 0 0 0.127em var(--tscaps-tag-lift-color, #52f73c), 0 0.111em 0.159em var(--tscaps-shadow-color, #000000);
+}
+
+.segment-decorations-below > .word-decoration {
+  text-shadow: 0 0.03em 0.03em var(--tscaps-shadow-color, #000000);
+}

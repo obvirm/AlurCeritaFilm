@@ -1,0 +1,157 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/animation/slide-in' as *;
+@use '../_lib/segment-typography' as *;
+
+@property --milo-geometry {
+  syntax: '<integer>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Container lives on .segment because @container can't match its own
+   container; with the query at segment level, descendants (.line, .word)
+   can be styled. Must not form a stacking context — the big word's
+   `mix-blend-mode: difference` needs to escape upward to the video. */
+.segment {
+  container-name: milo-line;
+  --milo-geometry: min(
+    min(1, max(0, calc(var(--word-count, 0) - 1))),
+    min(1, max(0, calc(var(--last-word-char-count, 99) - 2)))
+  );
+  @include segment-typography(
+    $font-family: 'Lobster',
+    $font-size: 3.5cqh,
+    $font-weight: 600,
+    $line-height: 1.1,
+    $rotation: false,
+  );
+  padding: 0.1em 0.35em;
+}
+
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: var(--tscaps-word-spacing, 0.2em);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  display: inline-block;
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 0.04em 0.22em rgba(0, 0, 0, 0.7);
+}
+
+@container milo-line style(--milo-geometry: 1) {
+  /* `width: min-content` snaps the line to the big last word's nowrap
+     text width; `space-between` then distributes the small words across
+     that width with equal gaps. */
+  .line {
+    width: min-content;
+    justify-content: space-between;
+    column-gap: 0;
+  }
+
+  /* Uniform shrink keeps the small words at the same size. The numerator
+     mirrors the big word's estimated rendered width (its char count times
+     its clamped font-size, see the rule below), so shrinkage kicks in
+     only when the small words actually need it: a short anchor gives
+     less room than a long one. The outer clamp floors readability at
+     0.3em and caps growth at the segment's natural 1em. */
+  .word:not(.last-word-in-line) {
+    white-space: nowrap;
+    font-size: clamp(
+      0.3em,
+      calc(
+        clamp(
+          calc(2em * var(--last-word-char-count, 1)),
+          27em,
+          calc(4.5em * var(--last-word-char-count, 1))
+        )
+        / max(calc(var(--segment-char-count, 1) - var(--last-word-char-count, 0)), 1)
+      ),
+      1em
+    );
+  }
+
+  /* `27 / char-count` keeps the visual width roughly constant ≈ 12em:
+     short words render tall, long words render shorter. */
+  /* `order` rather than DOM position: the anchor is the last word *said*,
+     which on a right-to-left line is the first one painted. Without this it
+     would claim the top row and push the small words underneath. */
+  .word.last-word-in-line {
+    order: 1;
+    flex-basis: 100%;
+    font-family: var(--tscaps-big-word-font-family, 'Anton');
+    font-weight: 400;
+    font-size: clamp(2em, calc(27em / max(var(--word-char-count, 1), 1)), 4.5em);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
+    mix-blend-mode: difference;
+    color: var(--tscaps-blend-color, #ffffff);
+    text-shadow: none;
+  }
+}
+
+/* Entrance animations fire at segment start. Animations live on `.word`
+   so they never make `.segment` or `.line` a stacking context — the big
+   word's `mix-blend-mode: difference` keeps escaping upward to the video.
+   Regular segments only nudge each word up subtly; breathing-point
+   segments — the document's first segment and any segment preceded by a
+   pause — split into a directional slide: the small words come in from
+   the left, the anchor word from the right. */
+
+.word {
+  @include rise-in(
+    $element: 'word',
+    $distance: 0.1em,
+    $delay: var(--on-segment-starts),
+    $from-opacity: 0.5,
+    $duration: 0.25s,
+    $easing: cubic-bezier(0.22, 0.6, 0.3, 1),
+  );
+}
+
+:is(.segment-after-pause, .first-segment-in-document) .word:not(.last-word-in-line) {
+  @include slide-in($element: 'word', $distance: -1.5em, $delay: var(--on-segment-starts), $from-opacity: 0);
+}
+
+:is(.segment-after-pause, .first-segment-in-document) .word.last-word-in-line {
+  @include slide-in($element: 'word', $distance: 1.5em, $delay: var(--on-segment-starts), $from-opacity: 0);
+}
+
+/* A lone small word gives `space-between` nothing to distribute, so the
+   browser drops it at the start of the row — the wrong end once the line
+   reads right to left. Queried off `.line`, which carries all three values:
+   `--word-count` from the engine, `--milo-geometry` and the direction by
+   inheritance. Counting words rather than children matters here: a word split
+   across two embedding levels paints as two elements but is still one word. */
+@container style(--tscaps-text-direction: rtl) and style(--milo-geometry: 1) and style(--word-count: 2) {
+  .word:not(.last-word-in-line) {
+    margin-left: auto;
+  }
+}
+
+/* The slide is a reading gesture: words enter from the side the line starts
+   on and the anchor answers from the far side. Right-to-left swaps both, by
+   flipping the travel the entrance already reads rather than by naming a
+   second animation. */
+@container style(--tscaps-text-direction: rtl) {
+  :is(.segment-after-pause, .first-segment-in-document) .word:not(.last-word-in-line) {
+    --entrance-slide: 1.5em;
+  }
+
+  :is(.segment-after-pause, .first-segment-in-document) .word.last-word-in-line {
+    --entrance-slide: -1.5em;
+  }
+}

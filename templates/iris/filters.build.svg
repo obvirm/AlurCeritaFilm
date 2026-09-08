@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+    <filter id="brush-outline" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.08)em" result="outline-shape"/>
+      <feFlood flood-color="var(--tscaps-outline-color, #000000)" result="outline-ink"/>
+      <feComposite in="outline-ink" in2="outline-shape" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

@@ -1,0 +1,105 @@
+@use '../_lib/animation/typewriter' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  --chrome-unit: calc(var(--tscaps-font-size, 2.81cqh) * var(--tscaps-chrome-scale, 1));
+
+  display: inline-block;
+  position: relative;
+  min-width: max(30cqh, var(--tscaps-fixed-width, 0cqw));
+  padding: var(--chrome-unit) 0.61em 0.61em calc(0.61em + 1.167 * var(--chrome-unit) * var(--tscaps-show-line-numbers, 1));
+  background: var(--tscaps-window-bg, #1e1e1e);
+  border-radius: calc(0.222 * var(--chrome-unit));
+  box-shadow: 0 0.44em 1.33em rgba(0, 0, 0, 0.55), 0 0.06em 0.17em rgba(0, 0, 0, 0.4);
+
+  @include segment-typography(
+    $font-family: 'JetBrains Mono Variable',
+    $font-size: 2.81cqh,
+    $text-align: left,
+    $letter-spacing: 0.01em,
+    $line-height: 1.4,
+    $color: #d4d4d4,
+    $rotation: false,
+  );
+
+  counter-reset: tscaps-line;
+}
+
+.segment::before {
+  content: var(--tscaps-title, 'caption.md');
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(0.833 * var(--chrome-unit));
+  padding: 0 calc(2.224 * var(--chrome-unit));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, 'Inter';
+  font-size: calc(0.334 * var(--chrome-unit));
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--tscaps-titlebar-text, #cccccc);
+  background:
+    radial-gradient(circle at calc(0.445 * var(--chrome-unit)) calc(0.416 * var(--chrome-unit)), #ff5f57 calc(0.110 * var(--chrome-unit)), transparent calc(0.167 * var(--chrome-unit))),
+    radial-gradient(circle at calc(1.000 * var(--chrome-unit)) calc(0.416 * var(--chrome-unit)), #febc2e calc(0.110 * var(--chrome-unit)), transparent calc(0.167 * var(--chrome-unit))),
+    radial-gradient(circle at calc(1.559 * var(--chrome-unit)) calc(0.416 * var(--chrome-unit)), #28c840 calc(0.110 * var(--chrome-unit)), transparent calc(0.167 * var(--chrome-unit))),
+    var(--tscaps-titlebar-bg, #252526);
+  border-radius: calc(0.222 * var(--chrome-unit)) calc(0.222 * var(--chrome-unit)) 0 0;
+}
+
+.line {
+  display: block;
+  position: relative;
+  counter-increment: tscaps-line;
+}
+
+.line::before {
+  content: counter(tscaps-line);
+  position: absolute;
+  left: calc(-1.114 * var(--chrome-unit));
+  width: calc(0.779 * var(--chrome-unit));
+  text-align: right;
+  color: var(--tscaps-gutter-color, #858585);
+  font-size: 0.78em;
+  top: 0.18em;
+  opacity: var(--tscaps-show-line-numbers, 1);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.19em);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: var(--tscaps-tag-bold, 900);
+}
+
+.quote {
+  font-style: italic;
+}
+
+.letter {
+  @include typewriter(
+    $element: 'letter',
+    $caret: '',
+    $show-caret: false,
+    $hide-caret-at-line-end: false,
+  );
+}
+
+/* A drawn bar rather than a glyph — an editor caret is a hairline that
+   ignores the font's own metrics, so it is sized here and nudged down
+   to sit on the text baseline. */
+.letter::after {
+  top: 0.05em;
+  width: 0.06em;
+  height: 1em;
+  background: var(--tscaps-caret-color, #aeafad);
+}

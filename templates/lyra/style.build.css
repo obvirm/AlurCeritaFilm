@@ -1,0 +1,45 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Bricolage Grotesque Variable");
+  font-weight: var(--tscaps-font-weight, 800);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 6cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, -0.015em);
+  line-height: 1.2;
+  text-transform: var(--tscaps-text-transform, none);
+  background-image: linear-gradient(calc(var(--tscaps-gradient-angle, 100) * 1deg), var(--tscaps-gradient-color-1, #ff6ec4), var(--tscaps-gradient-color-2, #4dd4ff), var(--tscaps-gradient-color-3, #b6f56d), var(--tscaps-gradient-color-4, #ffc857), var(--tscaps-gradient-color-1, #ff6ec4));
+  background-size: 400% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0.04em 0.08em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.22em rgba(0, 0, 0, 0.35)) saturate(var(--tscaps-saturation, 1));
+  --shimmer-travel: 400%;
+  animation: tscaps-shimmer calc(6s / var(--tscaps-shimmer-speed, 1)) linear var(--on-segment-starts, 0s) infinite both;
+}
+@keyframes tscaps-shimmer {
+  from {
+    background-position-x: 0%;
+  }
+  to {
+    background-position-x: var(--shimmer-travel);
+  }
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.1em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-decoration-color: var(--tscaps-gradient-color-1, #ff6ec4);
+}

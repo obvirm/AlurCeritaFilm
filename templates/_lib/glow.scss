@@ -1,0 +1,68 @@
+@use 'sass:list';
+@use 'control';
+
+/**
+ * Light coming off the glyphs, in the text's own colour, through the
+ * `--tscaps-glow-radius` control every template exposes the same way.
+ * Returns a comma-separated shadow list, so it composes into a
+ * `text-shadow` beside a cast shade:
+ *
+ *     text-shadow: glow(0.16), soft-drop-shadow(0.06, 0.25);
+ *
+ * A glow is not a way to hold a caption against its shot. It carries the
+ * text's colour, so over a bright frame it adds light to light and the
+ * edge it should have defended goes with it. Put it only on a template
+ * that already separates some other way — an outline, a hard cast shade,
+ * a plate — and leave that separator alone.
+ *
+ * `$passes` repeats the layer rather than widening it, which is how a
+ * halo gains weight without also gaining reach: one pass reads as a blur
+ * on the letters, two as light off them. Radius and count are separate
+ * because they are separate things to want.
+ *
+ * `$color` defaults to `currentColor`, so the halo follows whatever the
+ * word is painted — an accent, a proper noun, the word being narrated —
+ * without a rule per case. A template whose text is filled by a gradient
+ * has no current colour to take (its `color` is `transparent`) and must
+ * name one, and must use `glow-filter` besides.
+ */
+@function glow($radius, $passes: 1, $color: currentColor) {
+  $layer: 0 0 control.field('glow-radius', $radius) $color;
+  $layers: ();
+  @for $i from 1 through $passes {
+    $layers: list.append($layers, $layer, comma);
+  }
+  @return $layers;
+}
+
+/**
+ * The same glow for a template that paints through `filter` instead of
+ * `text-shadow`. Returns space-separated `drop-shadow()` functions:
+ *
+ *     filter: drop-shadow(soft-drop-shadow(0.03, 0.12)) glow-filter(0.12, $color: #ffd84d);
+ *
+ * Required, not preferred, wherever the text is filled by a
+ * `background-clip: text` gradient: a background paints beneath the text
+ * shadow, so a `text-shadow` there covers the fill it was meant to sit
+ * behind and floods the letters with the halo's colour.
+ *
+ * Goes last in the chain. Each function feeds the one after it, so a glow
+ * placed ahead of an outline built from `drop-shadow()` passes becomes
+ * their input and they draw a hard edge around the halo itself.
+ *
+ * The radius halves on the way in. `drop-shadow` reads its third length
+ * as roughly twice the blur that `text-shadow` and `box-shadow` read from
+ * the same number, so the control has to mean one softness whichever
+ * mechanism a template paints with.
+ */
+@function glow-filter($radius, $passes: 1, $color: currentColor) {
+  $layers: ();
+  @for $i from 1 through $passes {
+    $layers: list.append(
+      $layers,
+      drop-shadow(0 0 calc(#{control.field('glow-radius', $radius)} / 2) $color),
+      space
+    );
+  }
+  @return $layers;
+}

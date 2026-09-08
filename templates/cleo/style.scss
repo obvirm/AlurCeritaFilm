@@ -1,0 +1,46 @@
+@use '../_lib/animation/settle-in' as *;
+@use '../_lib/dynamic-font-size' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  --tscaps-font-size-scale: #{dynamic-font-size(0.06)};
+  @include segment-typography(
+    $font-family: 'Lora Variable',
+    $font-size: 4.3cqh,
+    $font-weight: 500,
+  );
+  @include settle-in($element: 'segment', $distance: 0.06em, $delay: var(--on-segment-starts), $from-opacity: 0.8);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  @include word-layout(0.13em);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000);
+  paint-order: stroke fill;
+  text-shadow:
+    0 0 0.15em var(--tscaps-shadow-color, #000),
+    soft-drop-shadow(0.06, 1.2),
+    soft-drop-shadow(0.06, 1.2),
+    soft-drop-shadow(0.06, 1.2);
+}
+
+.quote {
+  color: var(--tscaps-quote-color, #e6d647);
+}
+
+.emphasis {
+  font-weight: var(--tscaps-tag-weight, 900);
+}
+
+.accent, .entity {
+  font-style: var(--tscaps-tag-italic, italic);
+}

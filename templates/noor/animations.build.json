@@ -1,0 +1,26 @@
+[
+  {
+    "id": "settle-in",
+    "element": "segment",
+    "values": {
+      "--entrance-rise": {
+        "kind": "number",
+        "amount": -0.05,
+        "unit": "em"
+      },
+      "--entrance-fade": {
+        "kind": "number",
+        "amount": 0.8,
+        "unit": ""
+      },
+      "--entrance-duration": {
+        "kind": "number",
+        "amount": 0.3,
+        "unit": "s"
+      }
+    },
+    "keyframes": [
+      "tscaps-settle-in"
+    ]
+  }
+]

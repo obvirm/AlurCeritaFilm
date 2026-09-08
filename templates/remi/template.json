@@ -1,0 +1,63 @@
+{
+  "name": "Remi",
+  "category": "viral",
+  "variants": [
+    { "label": "Gold", "overrides": { "highlight-color": "#ffd966" } },
+    { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },
+    { "label": "Green", "overrides": { "highlight-color": "#3ddc84" } },
+    { "label": "Pink", "overrides": { "highlight-color": "#ff4fa3" } },
+    { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
+  ],
+  "typography": {
+    "fontFamily": "Caveat Variable",
+    "fontWeight": 700,
+    "fontSize": 6.0,
+    "wordSpacing": 0.12
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffd966",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 30,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.68
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

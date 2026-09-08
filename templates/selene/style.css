@@ -1,0 +1,62 @@
+@charset "UTF-8";
+
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, "Montserrat Variable");
+  font-weight: var(--tscaps-font-weight, 600);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: calc(var(--tscaps-font-size, 3.6cqh) * var(--tscaps-font-size-scale, 1));
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.25;
+  text-transform: var(--tscaps-text-transform, none);
+  text-decoration: var(--tscaps-text-decoration, none);
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  padding: 0.45em 0.9em;
+  border-radius: var(--tscaps-corner-radius, 2em);
+  overflow: hidden;
+  box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.28);
+}
+
+.tscaps-video-frame-layer {
+  filter: blur(var(--tscaps-blur-amount, 0.7cqh)) saturate(var(--tscaps-saturation, 1.5));
+  z-index: -2;
+}
+
+.segment::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, calc(var(--tscaps-tint-opacity, 0.12) * 1.6)) 0%, rgba(255, 255, 255, var(--tscaps-tint-opacity, 0.12)) 100%);
+  border-radius: inherit;
+  box-shadow: inset 0 0.04em 0 rgba(255, 255, 255, var(--tscaps-highlight-opacity, 0.4)), inset 0 -0.04em 0 rgba(0, 0, 0, 0.18), inset 0 0.04em 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22)), inset 0 -0.04em 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22)), inset 0.04em 0 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22)), inset -0.04em 0 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22));
+  z-index: -1;
+  pointer-events: none;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.1em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.1em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  text-shadow: 0 0 0.22em rgba(0, 0, 0, 0.55), 0 0.04em 0.08em rgba(0, 0, 0, 0.55);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: var(--tscaps-tag-bold, 900);
+  font-family: var(--tscaps-tag-font-family, "Montserrat Variable");
+}

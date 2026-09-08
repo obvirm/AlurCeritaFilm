@@ -1,0 +1,11 @@
+[
+  {
+    "id": "typewriter",
+    "element": "letter",
+    "values": {},
+    "keyframes": [
+      "tscaps-letter-appear",
+      "tscaps-caret-window"
+    ]
+  }
+]

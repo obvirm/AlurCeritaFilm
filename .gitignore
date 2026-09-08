@@ -17,6 +17,8 @@ whisper/models/
 *.bin
 models/
 sandbox/
+tts/
+browser/
 
 # Secrets — JANGAN pernah commit .env (berisi GEMINI_API_KEY dll)
 .env
@@ -50,6 +52,11 @@ temp_e829622_vlm.ts
 tscaps-web/dist/
 web/dist/
 web/node_modules/
+
+# Generated caption bundle + staged caption inputs (regenerated tiap run)
+tscaps-renderer/movie2short-template-bundle.generated.ts
+tscaps-renderer/public/movie2short-input.mp4
+tscaps-renderer/public/movie2short-captions.srt
 
 # Output pipeline di root
 output_getvid/

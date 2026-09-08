@@ -1,0 +1,18 @@
+/**
+ * Declares a style control and reads it in one step.
+ *
+ * `field('shadow-blur', 0.4)` returns `var(--tscaps-shadow-blur, 0.4em)`
+ * *and* adds a "Shadow blur" slider to the template, with the label,
+ * type, unit and bounds the control has everywhere else. The template
+ * supplies only the default, which is the part that is its look.
+ *
+ * A primitive that reads a control declares it this way, so a template
+ * gets the control by using the primitive rather than by knowing it
+ * had to add one. Templates call it directly for controls of their own.
+ *
+ * The id must be one the catalog describes; an unknown one fails the
+ * build rather than producing a variable no editor can drive.
+ */
+@function field($id, $default) {
+  @return tscaps-control-field($id, $default);
+}
