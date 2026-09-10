@@ -23,9 +23,9 @@ import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -226,6 +226,51 @@ function runNode(job, label, script, args, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Overlay: validasi PNG 9:16 + render HTML/CSS jadi PNG 1080x1920
+// ---------------------------------------------------------------------------
+function assertOverlayImage(p) {
+  const imgPath = path.resolve(String(p || ""));
+  if (!imgPath.startsWith(UPLOAD_DIR) || !fs.existsSync(imgPath)) {
+    throw new Error("File overlay tidak valid (upload PNG 9:16 dulu).");
+  }
+  let dims = "";
+  try {
+    dims = execFileSync("ffprobe", [
+      "-v", "error", "-select_streams", "v:0",
+      "-show_entries", "stream=width,height", "-of", "csv=p=0", imgPath,
+    ], { encoding: "utf8" }).trim();
+  } catch {
+    throw new Error("Overlay bukan file gambar yang valid.");
+  }
+  const [w, h] = dims.split(",").map(Number);
+  if (!(w > 0 && h > 0) || Math.abs(w / h - 9 / 16) > 0.01) {
+    throw new Error(`Overlay harus 9:16, dapat ${w}x${h}.`);
+  }
+  return imgPath;
+}
+
+async function renderOverlayHtml(job, partTag, partDir, html, css) {
+  const fontsCssUrl = pathToFileURL(path.join(ROOT, "tscaps-renderer", "fonts.css")).href;
+  const page = `<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="${fontsCssUrl}">
+<style>
+html, body { margin: 0; padding: 0; width: 1080px; height: 1920px; background: transparent; overflow: hidden; }
+${css}
+</style></head><body>${html}</body></html>`;
+  const htmlPath = path.join(partDir, "overlay.html");
+  const pngPath = path.join(partDir, "overlay.png");
+  await fsp.writeFile(htmlPath, page, "utf8");
+  await run(job, `${partTag}OVERLAY SCREENSHOT`, process.execPath, [
+    path.join(ROOT, "tools", "render-overlay-png.mjs"),
+    "--html", htmlPath,
+    "--output", pngPath,
+    "--chrome", CFG.tscapsChrome,
+  ]);
+  return pngPath;
+}
+
+// ---------------------------------------------------------------------------
 // Pipeline
 // ---------------------------------------------------------------------------
 async function runPipeline(job, input) {
@@ -395,6 +440,34 @@ async function runPipeline(job, input) {
     pushLog(job, `${partTag}[render] selesai -> ${rel(finalShort)}`);
     job.artifacts.push({ name: rel(finalShort), path: finalShort, kind: "video" });
 
+    // 4. OVERLAY opsional (SEBELUM caption): gambar PNG 9:16 atau HTML+CSS
+    // full-custom (kanvas 1080x1920 transparan -> screenshot -> tempel).
+    let captionInput = finalShort;
+    const overlayMode = input.overlayMode === "image" || input.overlayMode === "css" ? input.overlayMode : "none";
+    if (overlayMode !== "none") {
+      pushStatus(job, "running", "overlay");
+      const finalOverlay = path.join(partDir, "final_overlay.mp4");
+      let overlayPng = null;
+      if (overlayMode === "image") {
+        overlayPng = assertOverlayImage(input.overlayImage);
+      } else {
+        const html = String(input.overlayHtml || "");
+        const css = String(input.overlayCss || "");
+        if (!html.trim() && !css.trim()) throw new Error("Overlay CSS kosong (isi HTML/CSS dulu).");
+        overlayPng = await renderOverlayHtml(job, partTag, partDir, html, css);
+      }
+      await run(job, `${partTag}OVERLAY FFMPEG`, "ffmpeg", [
+        "-nostdin", "-y",
+        "-i", finalShort,
+        "-i", overlayPng,
+        "-filter_complex", "[1:v]format=rgba,scale=1080:1920[ov];[0:v][ov]overlay=0:0:format=yuv420",
+        "-c:a", "copy", finalOverlay,
+      ]);
+      pushLog(job, `${partTag}[overlay] selesai -> ${rel(finalOverlay)}`);
+      job.artifacts.push({ name: rel(finalOverlay), path: finalOverlay, kind: "video" });
+      captionInput = finalOverlay;
+    }
+
     // 5. CAPTION tscaps headless (per part, template pilihan user) ---------------
     if (caption) {
       pushStatus(job, "running", "caption");
@@ -406,7 +479,7 @@ async function runPipeline(job, input) {
         await run(job, `${partTag}CAPTION TSCAPS (${tpl})`, process.execPath, [
           CFG.tsxCli, "tscaps-renderer/render-movie2short-template.ts",
           "--template", tpl,
-          "--video", finalShort,
+          "--video", captionInput,
           "--manifest", partManifest,
           "--durations", narrationJson,
           "--output", finalCaptioned,
@@ -531,6 +604,10 @@ const server = http.createServer(async (req, res) => {
       minutesPerPart: Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : (Number(process.env.M2S_MINUTES_PER_PART) > 0 ? Number(process.env.M2S_MINUTES_PER_PART) : 2),
       targetMinutes: Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0,
       bgm: input.bgm ? String(input.bgm) : undefined,
+      overlayMode: input.overlayMode === "image" || input.overlayMode === "css" ? input.overlayMode : "none",
+      overlayImage: input.overlayImage ? String(input.overlayImage) : undefined,
+      overlayHtml: input.overlayHtml ? String(input.overlayHtml).slice(0, 200000) : undefined,
+      overlayCss: input.overlayCss ? String(input.overlayCss).slice(0, 200000) : undefined,
     };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, jobId: job.id }));

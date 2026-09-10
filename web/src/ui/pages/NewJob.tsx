@@ -4,7 +4,7 @@ import { VideoDropzone } from "@/ui/components/VideoDropzone";
 import { TemplateGrid } from "@/ui/components/TemplateGrid";
 import { getTemplates, runPipeline, uploadVideo, type TemplateMeta } from "@/app/api/client";
 import { useAppStore } from "@/app/stores/appStore";
-import { Loader2, AlertCircle, Settings2, Clapperboard, Mic2, Sparkles, Zap, Scissors } from "lucide-react";
+import { Loader2, AlertCircle, Settings2, Clapperboard, Layers, Mic2, Sparkles, Zap, Scissors } from "lucide-react";
 
 export function NewJob() {
   const navigate = useNavigate();
@@ -29,6 +29,12 @@ export function NewJob() {
   const [template, setTemplate] = useState("loki");
   const [lead, setLead] = useState(5);
   const [tail, setTail] = useState(5);
+  const [overlayMode, setOverlayMode] = useState<"none" | "image" | "css">("none");
+  const [overlayImage, setOverlayImage] = useState<string | null>(null);
+  const [overlayImageName, setOverlayImageName] = useState<string | null>(null);
+  const [overlayUploading, setOverlayUploading] = useState(false);
+  const [overlayHtml, setOverlayHtml] = useState('<div class="frame"></div>\n<div class="top">JUDUL</div>');
+  const [overlayCss, setOverlayCss] = useState('.frame { position: absolute; inset: 24px; border: 12px solid #B6FF3B; border-radius: 48px; }\n.top { position: absolute; top: 90px; left: 0; right: 0; text-align: center; font-family: Anton, sans-serif; font-size: 110px; color: #fff; -webkit-text-stroke: 2px #000; }');
 
   useEffect(() => {
     getTemplates().then(setTemplates).catch(() => {});
@@ -56,6 +62,20 @@ export function NewJob() {
     }
   };
 
+  const handleOverlayFile = async (file: File) => {
+    setError(null);
+    setOverlayUploading(true);
+    try {
+      const { videoPath: vp, name } = await uploadVideo(file);
+      setOverlayImage(vp);
+      setOverlayImageName(name);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setOverlayUploading(false);
+    }
+  };
+
   const handleRun = async () => {
     if (!videoPath) {
       setError("Pilih video dulu (upload atau pakai path yang sudah ada).");
@@ -78,6 +98,10 @@ export function NewJob() {
         parts: outputMode === "manual" ? parts : undefined,
         minutesPerPart: outputMode === "auto" ? minutesPerPart : undefined,
         targetMinutes: outputMode === "one" && targetMinutes > 0 ? targetMinutes : undefined,
+        overlayMode,
+        overlayImage: overlayMode === "image" ? overlayImage || undefined : undefined,
+        overlayHtml: overlayMode === "css" ? overlayHtml : undefined,
+        overlayCss: overlayMode === "css" ? overlayCss : undefined,
       });
       navigate(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (e) {
@@ -277,7 +301,7 @@ export function NewJob() {
         <label className="mt-4 flex items-center gap-2 rounded-xl border border-[#B6FF3B]/20 bg-[#B6FF3B]/10 px-3 py-2.5 cursor-pointer">
           <input type="checkbox" checked={caption} onChange={(e) => setCaption(e.target.checked)} className="h-4 w-4 rounded accent-[#B6FF3B]" />
           <span className="text-sm font-semibold text-white">Caption ON</span>
-          <span className="text-xs text-[#a1a1aa]">— tscaps headless + template sandbox</span>
+          <span className="text-xs text-[#a1a1aa]">— tscaps headless + template repo</span>
         </label>
       </section>
 
@@ -296,10 +320,79 @@ export function NewJob() {
 
       <section className="rounded-[20px] border border-[#27272A] bg-[#0A0A0A] p-5">
         <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#B6FF3B] text-black">
+            <Layers className="h-4 w-4" />
+          </span>
+          4 · Overlay <span className="text-xs font-medium text-[#a1a1aa]">ditempel sebelum caption · kanvas 9:16</span>
+        </div>
+        <div className="mb-3 flex gap-2">
+          {(["none", "image", "css"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setOverlayMode(m)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${overlayMode === m ? "border-[#B6FF3B] bg-[#B6FF3B]/10 text-white" : "border-[#27272A] text-[#a1a1aa]"}`}
+            >
+              {m === "none" ? "Tanpa" : m === "image" ? "Gambar PNG" : "HTML+CSS"}
+            </button>
+          ))}
+        </div>
+        {overlayMode === "image" && (
+          <div>
+            <label className="block cursor-pointer rounded-xl border border-dashed border-[#27272A] px-3 py-3 text-center text-xs text-[#a1a1aa]">
+              <input
+                type="file"
+                accept="image/png"
+                className="hidden"
+                disabled={overlayUploading}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleOverlayFile(f); e.target.value = ""; }}
+              />
+              {overlayUploading ? "Uploading…" : overlayImageName ? `✓ ${overlayImageName}` : "Upload PNG 9:16 (mis. 1080×1920)"}
+            </label>
+            <p className="mt-1.5 text-xs text-[#71717a]">Wajib 9:16 — selain itu ditolak pipeline.</p>
+          </div>
+        )}
+        {overlayMode === "css" && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">HTML (di dalam body 1080×1920 transparan)</span>
+                <textarea
+                  value={overlayHtml}
+                  onChange={(e) => setOverlayHtml(e.target.value)}
+                  rows={5}
+                  spellCheck={false}
+                  className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2 font-mono text-xs text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">CSS (full custom kayak studio)</span>
+                <textarea
+                  value={overlayCss}
+                  onChange={(e) => setOverlayCss(e.target.value)}
+                  rows={8}
+                  spellCheck={false}
+                  className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2 font-mono text-xs text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+                />
+              </label>
+            </div>
+            <div>
+              <p className="mb-1.5 text-xs font-bold tracking-wide text-[#a1a1aa]">Preview 9:16</p>
+              <div className="relative h-[288px] w-[162px] overflow-hidden rounded-lg border border-[#27272A] bg-[repeating-conic-gradient(#1a1a1a_0_25%,#0a0a0a_0_50%)_0_0/16px_16px]">
+                <style>{overlayCss}</style>
+                <div className="absolute left-0 top-0 origin-top-left" style={{ width: 1080, height: 1920, transform: "scale(0.15)" }} dangerouslySetInnerHTML={{ __html: overlayHtml }} />
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-[20px] border border-[#27272A] bg-[#0A0A0A] p-5">
+        <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1A1A1A] text-white border border-[#27272A]">
             <Mic2 className="h-4 w-4" />
           </span>
-          4 · TTS & BGM
+          5 · TTS & BGM
         </div>
         <p className="text-xs leading-relaxed text-[#a1a1aa]">
           TTS via <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">tts/bin/audiocpp_cli.exe</code> +{" "}

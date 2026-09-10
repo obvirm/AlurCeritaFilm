@@ -1,5 +1,5 @@
 export type JobStatus = "queued" | "running" | "done" | "error" | "cancelled";
-export type JobStage = "analysis" | "condense" | "tts" | "split" | "render" | "caption" | null;
+export type JobStage = "analysis" | "condense" | "tts" | "split" | "render" | "overlay" | "caption" | null;
 
 export interface JobArtifact {
   name: string;
@@ -99,6 +99,10 @@ export interface RunPayload {
   minutesPerPart?: number;
   targetMinutes?: number;
   bgm?: string;
+  overlayMode?: "none" | "image" | "css";
+  overlayImage?: string;
+  overlayHtml?: string;
+  overlayCss?: string;
 }
 
 export async function runPipeline(p: RunPayload) {
