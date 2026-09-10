@@ -290,7 +290,7 @@ export function NewJob() {
         </div>
         <TemplateGrid templates={templates} selectedId={template} onSelect={setTemplate} />
         <p className="mt-3 text-xs text-[#71717a]">
-          Dir: <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5 text-white">sandbox/templates</code> · Pilih <span className="text-white">loki</span> untuk default.
+          Dir: <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5 text-white">templates/</code> · Pilih <span className="text-white">loki</span> untuk default.
         </p>
       </section>
 
@@ -302,7 +302,7 @@ export function NewJob() {
           4 · TTS & BGM
         </div>
         <p className="text-xs leading-relaxed text-[#a1a1aa]">
-          TTS via <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">sandbox/audio-cpp/bin/audiocpp_cli.exe</code> +{" "}
+          TTS via <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">tts/bin/audiocpp_cli.exe</code> +{" "}
           <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">models/OmniVoice</code> backend <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">cuda</code>. Voice ref{" "}
           <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">data/reference/test_snippet.wav</code> · BGM default{" "}
           <code className="rounded bg-[#000000] border border-[#27272A] px-1 py-0.5">public/bgm/*.flac</code>
