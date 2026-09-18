@@ -43,7 +43,7 @@ export async function runAnalysisPipeline(options: PipelineOptions) {
 
   console.log("[4/5] VLM analysis...");
   const allScenes: SceneOutput[] = [];
-  const chunkDurationRaw = Number(process.env.M2S_CHUNK_DURATION || "40");
+  const chunkDurationRaw = Number(process.env.CHUNK_DURATION || "40");
   const chunkDuration = chunkDurationRaw > 0 ? chunkDurationRaw : totalDuration;
   let previousNarration = "";
 

@@ -73,8 +73,8 @@ const DURATION_PROMPT_TEMPLATE = `PENENTUAN DURASI (HARDCODE)
 Kamu adalah pembuat cerita yang bisa menentukan berapa menit {{MINUTES}} dan berapa part {{PARTS}} untuk video short. Atur total durasi agar pas dengan target: {{MINUTES}} menit per part, total {{PARTS}} part. Bagi cerita secara proporsional.`;
 
 function getDurationPrompt(): string {
-  const minutes = process.env.M2S_MINUTES_PER_PART || process.env.MINUTES || "2";
-  const parts = process.env.M2S_PARTS || process.env.PARTS || "0";
+  const minutes = process.env.MINUTES_PER_PART || process.env.MINUTES || "2";
+  const parts = process.env.PARTS || "0";
   return DURATION_PROMPT_TEMPLATE.replaceAll("{{MINUTES}}", minutes).replaceAll("{{PARTS}}", parts);
 }
 

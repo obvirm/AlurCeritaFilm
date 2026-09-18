@@ -21,7 +21,7 @@ async function main() {
       model: {
         type: 'string',
         short: 'm',
-        default: process.env.M2S_MODEL_NAME || 'ag/gemini-3.6-flash-high'
+        default: process.env.MODEL_NAME || 'ag/gemini-3.6-flash-high'
       },
       'only-render': {
         type: 'string' // Pass a manifest path to skip analysis

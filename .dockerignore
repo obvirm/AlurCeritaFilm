@@ -1,0 +1,15 @@
+# Jangan kirim yang berat/rahasia ke daemon docker
+node_modules/
+studio/web/node_modules/
+.git/
+.cache/
+data/output/
+data/uploads/
+*.mp4
+*.wav
+*.mp3
+*.log
+.env
+.env.*
+!.env.docker.example
+work/

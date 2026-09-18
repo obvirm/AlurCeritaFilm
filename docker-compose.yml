@@ -1,0 +1,20 @@
+# movie2short — Docker Compose
+services:
+  studio:
+    build: .
+    image: movie2short:linux
+    ports:
+      - "${PORT:-3131}:3131"
+    env_file:
+      - .env.docker
+    environment:
+      PORT: "${PORT:-3131}"
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      AUDIOCPP_SERVER: "${AUDIOCPP_SERVER:-http://host.docker.internal:8080}"
+    shm_size: "2gb"
+    volumes:
+      - ./data:/app/data
+      - ./data/reference:/app/data/reference:ro
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

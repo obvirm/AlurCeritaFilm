@@ -52,11 +52,16 @@ temp_e829622_vlm.ts
 tscaps-web/dist/
 web/dist/
 web/node_modules/
+studio/web/dist/
+studio/web/node_modules/
 
 # Generated caption bundle + staged caption inputs (regenerated tiap run)
 tscaps-renderer/movie2short-template-bundle.generated.ts
 tscaps-renderer/public/movie2short-input.mp4
 tscaps-renderer/public/movie2short-captions.srt
+src/caption/bundle.generated.ts
+src/caption/public/input.mp4
+src/caption/public/captions.srt
 
 # Output pipeline di root
 output_getvid/
