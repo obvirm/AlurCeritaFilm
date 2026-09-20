@@ -38,6 +38,7 @@ export function NewJob() {
   const [voiceRef, setVoiceRef] = useState<string>("");
   const [voiceRefName, setVoiceRefName] = useState<string | null>(null);
   const [voiceRefUploading, setVoiceRefUploading] = useState(false);
+  const [language, setLanguage] = useState("Indonesian");
 
   useEffect(() => {
     getTemplates().then(setTemplates).catch(() => {});
@@ -125,6 +126,7 @@ export function NewJob() {
         overlayHtml: overlayMode === "css" ? overlayHtml : undefined,
         overlayCss: overlayMode === "css" ? overlayCss : undefined,
         voiceRef: voiceRef || undefined,
+        language: language || undefined,
       });
       navigate(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (e) {
@@ -302,7 +304,35 @@ export function NewJob() {
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Lead (s)</span>
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Bahasa (TTS + Caption)</span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+            >
+              <option value="Indonesian">Indonesia</option>
+              <option value="English">English</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Korean">Korean</option>
+              <option value="Mandarin">Mandarin</option>
+              <option value="Arabic">Arabic</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Spanish">Spanish</option>
+              <option value="French">French</option>
+              <option value="German">German</option>
+              <option value="Portuguese">Portuguese</option>
+              <option value="Russian">Russian</option>
+              <option value="Thai">Thai</option>
+              <option value="Vietnamese">Vietnamese</option>
+              <option value="Turkish">Turkish</option>
+              <option value="Dutch">Dutch</option>
+              <option value="Polish">Polish</option>
+              <option value="Italian">Italian</option>
+              <option value="Swedish">Swedish</option>
+              <option value="Ukrainian">Ukrainian</option>
+            </select>
+            <span className="text-xs text-[#71717a]">Otomatis ke TTS + Whisper caption</span>
+          </label>
             <input
               type="number"
               value={lead}

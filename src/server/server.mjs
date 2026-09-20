@@ -357,6 +357,9 @@ async function runPipeline(job, input) {
   ];
   if (lead !== undefined && lead !== null) httpTtsArgs.push("--lead", String(lead));
   if (tail !== undefined && tail !== null) httpTtsArgs.push("--tail", String(tail));
+  // Language support
+  const ttsLanguage = input.language || "Indonesian";
+  httpTtsArgs.push("--language", ttsLanguage);
   // Voice cloning support
   const voiceRef = input.voiceRef || process.env.AUDIOCPP_VOICE_REF;
   if (voiceRef) httpTtsArgs.push("--voice-ref", voiceRef);
@@ -464,7 +467,12 @@ async function runPipeline(job, input) {
           "--width", "1080",
           "--height", "1920",
         ], {
-          env: { TSCAPS_CHROME_PATH: CFG.tscapsChrome, PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath, TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates },
+          env: {
+            TSCAPS_CHROME_PATH: CFG.tscapsChrome,
+            PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath,
+            TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates,
+            TSCAPS_WHISPER_LANGUAGE: ttsLanguage,
+          },
         });
         pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
         dbAddArtifact(job.id, { name: rel(finalCaptioned), path: finalCaptioned, kind: "video" });
@@ -583,7 +591,8 @@ const server = http.createServer(async (req, res) => {
       overlayImage: input.overlayImage ? String(input.overlayImage) : undefined,
       overlayHtml: input.overlayHtml ? String(input.overlayHtml).slice(0, 200000) : undefined,
       overlayCss: input.overlayCss ? String(input.overlayCss).slice(0, 200000) : undefined,
-      voiceRef: input.voiceRef ? String(input.voiceRef) : undefined,
+       voiceRef: input.voiceRef ? String(input.voiceRef) : undefined,
+      language: (input.language || "Indonesian").toString(),
     };
     const job = createJob(videoPath, sanitized);
     await fsp.mkdir(job.dir, { recursive: true });

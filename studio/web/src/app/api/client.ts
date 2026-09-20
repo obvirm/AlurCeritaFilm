@@ -104,6 +104,7 @@ export interface RunPayload {
   overlayHtml?: string;
   overlayCss?: string;
   voiceRef?: string; // base64 audio WAV for voice cloning
+  language?: string; // TTS/Whisper language (default: "Indonesian")
 }
 
 export async function runPipeline(p: RunPayload) {

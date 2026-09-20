@@ -197,7 +197,7 @@ window.renderMovie2short = async () => {
   // It listens to the audio from final_short.mp4 and produces word-level timing.
   const builder = new RenderPipelineBuilder()
     .withInputVideo(inputBlob)
-    .withTranscriberOptions({ language: 'id' });
+    .withTranscriberOptions({ language: process.env.TSCAPS_WHISPER_LANGUAGE || 'id' });
   if (segmentSplitter) builder.withSegmentSplitter(segmentSplitter);
   if (line.type === 'fixed-tail') {
     builder.withLineSplitter(new FixedTailLineSplitter({
