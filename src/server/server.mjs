@@ -454,16 +454,12 @@ async function runPipeline(job, input) {
     if (caption) {
       pushStatus(job, "running", "caption");
       const capName = `final_captioned_${tpl}.mp4`;
-      const srtName = `final_captioned_${tpl}.srt`;
-      const srtPath = path.join(partDir, srtName);
       const finalCaptioned = path.join(partDir, capName);
       try {
         await run(job, `${partTag}CAPTION TSCAPS (${tpl})`, process.execPath, [
           CFG.tsxCli, "src/caption/render.ts",
           "--template", tpl,
           "--video", captionInput,
-          "--manifest", partManifest,
-          "--durations", narrationJson,
           "--output", finalCaptioned,
           "--width", "1080",
           "--height", "1920",
@@ -472,7 +468,6 @@ async function runPipeline(job, input) {
         });
         pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
         dbAddArtifact(job.id, { name: rel(finalCaptioned), path: finalCaptioned, kind: "video" });
-        if (fs.existsSync(srtPath)) dbAddArtifact(job.id, { name: rel(srtPath), path: srtPath, kind: "srt" });
       } catch (e) {
         pushLog(job, `${partTag}[caption] gagal (video tetap tersedia tanpa caption): ${e.message}`, "warn");
       }
@@ -839,13 +834,24 @@ server.listen(PORT, () => {
   console.log(`   http://localhost:${PORT}`);
   console.log(`   Jobs   : ${JOBS_DIR}`);
   console.log(`   DB     : ${DB_DIR}`);
-  // Warmup TTS model — load on startup to avoid "bad allocation" on first request
-  // Include speaker_reference so the speaker encoder is pre-loaded too (else Scene 1 pays first-load cost)
+  // Warmup: format dok audio C++ (voice_ref path + reference_text).
+  // Ref murni dari env (file pilihan user, gonta-ganti) — tanpa aturan detik/nama.
   const ttsServer = process.env.AUDIOCPP_SERVER || "http://127.0.0.1:8080";
-  const warmupBody = { model: "higgs-tts", input: "warmup", response_format: "wav", language: "Indonesian" };
+  const ttsModel = process.env.TTS_MODEL || "higgs-tts-q4";
+  const hostDataDir = (process.env.HOST_DATA_DIR || "").replace(/\\/g, "/").replace(/\/$/, "");
+  const warmupBody = { model: ttsModel, input: "warmup", response_format: "wav", language: "Indonesian" };
   try {
-    const refPath = process.env.AUDIOCPP_VOICE_REF || path.join(ROOT, "data", "reference", "test_snippet.wav");
-    if (fs.existsSync(refPath)) warmupBody.speaker_reference = fs.readFileSync(refPath).toString("base64");
+    const refPath = process.env.AUDIOCPP_VOICE_REF;
+    if (refPath && fs.existsSync(refPath)) {
+      if (hostDataDir && refPath.startsWith("/app/data")) {
+        warmupBody.voice_ref = { type: "path", path: hostDataDir + refPath.slice("/app/data".length) };
+      } else {
+        const b64 = fs.readFileSync(refPath).toString("base64");
+        if (b64.length <= 5 * 1024 * 1024) warmupBody.voice_ref = { type: "base64", data: b64 };
+      }
+      const refTxt = [refPath.replace(/\.[^.]+$/, ".txt"), `${refPath}.txt`].find((p) => fs.existsSync(p));
+      if (warmupBody.voice_ref && refTxt) warmupBody.reference_text = fs.readFileSync(refTxt, "utf8").trim();
+    }
   } catch {}
   (async () => {
     for (let attempt = 1; attempt <= 10; attempt++) {

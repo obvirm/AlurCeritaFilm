@@ -7,7 +7,6 @@
  */
 import {
   RenderPipelineBuilder,
-  SrtTranscriber,
   CompositeSegmentSplitter,
   BoundarySegmentSplitter,
   LimitByScaledCharsSegmentSplitter,
@@ -146,15 +145,13 @@ if (TEMPLATE_FILTERS) {
 window.renderMovie2short = async () => {
   const params = new URLSearchParams(window.location.search);
   const videoUrl = params.get('video') ?? '/input.mp4';
-  const srtUrl = params.get('srt') ?? '/captions.srt';
   const filename = params.get('output') ?? `final_short_captioned_${TEMPLATE_ID}.mp4`;
   const w = Number(params.get('width') || 1080);
   const h = Number(params.get('height') || 1920);
 
-  console.log(`[tscaps-template] ${TEMPLATE_ID}: fetching ${videoUrl} + ${srtUrl}`);
-  const [videoResponse, srtResponse] = await Promise.all([fetch(videoUrl), fetch(srtUrl)]);
+  console.log(`[tscaps-template] ${TEMPLATE_ID}: fetching ${videoUrl}`);
+  const videoResponse = await fetch(videoUrl);
   if (!videoResponse.ok) throw new Error(`Video fetch failed: ${videoResponse.status}`);
-  if (!srtResponse.ok) throw new Error(`SRT fetch failed: ${srtResponse.status}`);
   // Font template harus ikut di-embed ke SVG (SVG-as-image tidak bisa baca
   // font dokumen). Engine menanam url() jadi base64 via CssResourceEmbedder.
   // TEMPLATE_FONTS_CSS ditanam saat generate bundle (Node) — bukan fetch,
@@ -172,11 +169,35 @@ window.renderMovie2short = async () => {
     ]);
   } catch { /* abaikan, lanjut dengan font yang ada */ }
   await document.fonts.ready;
-  const [inputBlob, srt] = await Promise.all([videoResponse.blob(), srtResponse.text()]);
+  const inputBlob = await videoResponse.blob();
 
+  // Patch transformers.js fetch to serve models from local HTTP cache instead of HF Hub.
+  // The container runs a static file server on port 8877 with the model cache.
+  // Different whisper models use different snapshot dirs (default, abc123, etc).
+  const _origFetch = typeof globalThis.fetch !== 'undefined' ? globalThis.fetch.bind(globalThis) : undefined;
+  if (_origFetch) {
+    (globalThis as any).fetch = async (input: any, init?: any) => {
+      const url = typeof input === 'string' ? input : input?.url || '';
+      if (url.includes('huggingface.co') && url.includes('resolve/main')) {
+        // HF URL: https://huggingface.co/onnx-community/whisper-X/resolve/main/path/to/file
+        // Local: http://localhost:8877/models--onnx-community--whisper-X/snapshots/default/path/to=file
+        const withoutDomain = url.replace('https://huggingface.co/', '');
+        // Replace /resolve/main/ but keep the trailing slash before filename
+        const withoutResolve = withoutDomain.replace('/resolve/main/', '/');
+        const segs = withoutResolve.split('/').filter(s => s.length > 0);
+        const local = 'http://localhost:8877/models--' + segs[0] + '--' + segs[1] + '/snapshots/default/' + segs.slice(2).join('/');
+        console.log('[tscaps-template] HF redirect -> ' + local);
+        return _origFetch(local, init);
+      }
+      return _origFetch(url, init);
+    };
+  }
+
+  // Default transcriber is WhisperTranscriber with MediaBunnyAudioDecoder.
+  // It listens to the audio from final_short.mp4 and produces word-level timing.
   const builder = new RenderPipelineBuilder()
     .withInputVideo(inputBlob)
-    .withTranscriber(new SrtTranscriber(srt));
+    .withTranscriberOptions({ language: 'id' });
   if (segmentSplitter) builder.withSegmentSplitter(segmentSplitter);
   if (line.type === 'fixed-tail') {
     builder.withLineSplitter(new FixedTailLineSplitter({

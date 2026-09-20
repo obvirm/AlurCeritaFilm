@@ -34,7 +34,11 @@ movie2short/
 - **Video input utama**: `C:\Users\X\Downloads\getvid.mp4`
 - **Video referensi** (gaya narasi): `C:\Users\X\Downloads\KISAH SPONGEBOB JADI PENGANGGURAN.mp4`
 - JANGAN menukar keduanya. Video referensi hanya untuk gaya, BUKAN input pipeline.
-- Reference voice TTS: `data/reference/patrick_voice.wav` (12 detik, 16kHz mono, dipotong dari `patrick_ref.wav` 176 detik) - scope SATU narrator. `test_snippet.wav`/`spongebob_voice.wav` lama jangan dipakai.
+## Voice Clone — Dok audio C++ Adalah Ketuhanan
+- WAJIB ikut `audio.cpp/app/server/README.md` penuh. Format request: `voice_ref: {type:"base64",data}` (atau `{type:"path",path}`) + `reference_text` (transkrip SAMA PERSIS isi audio ref).
+- DILARANG aturan custom: tidak ada aturan detik/durasi/nama file voice. File ref = pilihan user, gonta-ganti untuk tes.
+- Konvensi pasangan: `<nama>.wav` + `<nama>.txt` satu basename (contoh: `patrick_ref.wav` + `patrick_ref.wav.txt`). Pipeline auto-pakai `.txt` pendamping; override via `--ref-text`.
+- Ref saat ini (boleh diganti user kapan pun): `data/reference/patrick_ref.wav`.
 
 ## Pipeline Architecture
 1. **Analyzer** (`src/analyzer/` via `src/server/analyze.ts`): VLM analysis per chunk via OpenAI Compatible API → manifest + narration.
@@ -53,8 +57,10 @@ movie2short/
 ## TTS — HTTP API Only
 - `audiocpp_server` (Higgs Audio v3) berjalan di HOST, bukan di Docker.
 - Pipeline memanggil via HTTP: `POST http://host.docker.internal:8080/v1/audio/speech`
-- Voice cloning: kirim `speaker_reference` (base64 WAV) di request body.
-- Config: `AUDIOCPP_SERVER` di `.env.docker` (default: `http://host.docker.internal:8080`)
+- Voice cloning = `voice_ref: {type:"path",path}` (host path via `HOST_DATA_DIR`) + `reference_text`. Base64 ditolak server bila >5 MiB.
+- Model TTS default: `omnivoice` (600+ bahasa, voice clone). File model: `D:\compare\models\OmniVoice-GGUF\omnivoice-q8_0.gguf`.
+- Config host: `E:\Ai\audiocpp\server.json` → model id `omnivoice`.
+- Config `.env.docker`: `AUDIOCPP_SERVER`, `AUDIOCPP_VOICE_REF`, `TTS_MODEL`, `HOST_DATA_DIR`.
 - **TIDAK ada** `audiocpp_cli`, `tts/bin/`, `models/` di repo. Semua di host.
 
 ## VLM API Gateway
@@ -99,6 +105,14 @@ Atau: `npm run dev:ui`
 - **JANGAN jawab iya-iya tanpa bukti.** Sertakan `file:line`.
 - **DI plan cuma boleh read/inspect.**
 - **DI build jangan eksekusi tanpa `ok` eksplisit user.**
+
+## Aturan Timeout & Anti-Hang (WAJIB)
+- SEMUA perintah yang bisa gantung WAJIB timeout eksplisit. Tidak ada perintah tanpa batas.
+- DILARANG start server + test dalam 1 perintah (output streaming mengunci call). Pola wajib: start detached + redirect output → verifikasi/poll di perintah terpisah.
+- Download besar WAJIB resume (`curl -C -`, retry terbatas). Dilarang transfer raksasa sekali jalan tanpa resume.
+- Polling WAJIB bounded (N iterasi × sleep) — dilarang loop tanpa akhir.
+- Call yang lewat timeout TANPA output = abort + lapor. Dilarang ulang buta perintah yang sama.
+- Operasi >10 mnt (build, download GB, convert model) WAJIB dipecah jadi tahap cekpoin, lapor tiap tahap.
 
 ## Known Issues / Env
 - C: drive mudah penuh (pagefile 16-30 GB; RAM host 31,8 GB).
