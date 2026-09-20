@@ -29,6 +29,7 @@ interface Args {
   output: string;
   width: number;
   height: number;
+  language?: string;
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -104,7 +105,8 @@ async function run(options: Args): Promise<void> {
       page.on('console', (msg) => console.log(`[page ${msg.type()}] ${msg.text()}`));
       page.on('pageerror', (error) => console.error('[page error]', error.message));
       const url = `${resolveUrl(server)}template.html` +
-        `?width=${options.width}&height=${options.height}&output=${encodeURIComponent(path.basename(output))}`;
+        `?width=${options.width}&height=${options.height}&output=${encodeURIComponent(path.basename(output))}` +
+        (options.language ? `&language=${encodeURIComponent(options.language)}` : '');
       console.log(`[tscaps-template-cli] Opening ${url}`);
       try {
         await page.goto(url, { waitUntil: 'networkidle', timeout: 300_000 });
@@ -161,5 +163,6 @@ function parseArgs(argv: string[]): Args {
     output: required('output'),
     width: Number(values.get('width') || 1080),
     height: Number(values.get('height') || 1920),
+    language: values.get('language') || undefined,
   };
 }
