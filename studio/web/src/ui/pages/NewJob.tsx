@@ -366,6 +366,7 @@ export function NewJob() {
               <option value="medium">Medium — paling akurat</option>
             </select>
             <span className="text-xs text-[#71717a]">Ukuran model & kecepatan transcription</span>
+          </label>
           <label className="space-y-1.5">
             <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Lead (s)</span>
             <input
