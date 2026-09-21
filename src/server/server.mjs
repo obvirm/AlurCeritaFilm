@@ -848,7 +848,7 @@ server.listen(PORT, () => {
   const ttsServer = process.env.AUDIOCPP_SERVER || "http://127.0.0.1:8080";
   const ttsModel = process.env.TTS_MODEL || "higgs-tts-q4";
   const hostDataDir = (process.env.HOST_DATA_DIR || "").replace(/\\/g, "/").replace(/\/$/, "");
-  const warmupBody = { model: ttsModel, input: "warmup", response_format: "wav", language: "Indonesian" };
+  const warmupBody = { model: ttsModel, input: "warmup", response_format: "wav", language: process.env.LANGUAGE || "Indonesian" };
   try {
     const refPath = process.env.AUDIOCPP_VOICE_REF;
     if (refPath && fs.existsSync(refPath)) {
