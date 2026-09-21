@@ -30,6 +30,8 @@ data/uploads/
 data/input/*.mp4
 *.mp4
 *.wav
+!src/patrick_ref_voice.wav
+!src/patrick_ref_voice.txt
 *.mp3
 *.log
 *.tmp
