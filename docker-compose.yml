@@ -15,6 +15,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./data/reference:/app/data/reference:ro
+      - ./data/hf-cache:/root/.cache/huggingface
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
