@@ -592,7 +592,7 @@ const server = http.createServer(async (req, res) => {
       overlayHtml: input.overlayHtml ? String(input.overlayHtml).slice(0, 200000) : undefined,
       overlayCss: input.overlayCss ? String(input.overlayCss).slice(0, 200000) : undefined,
        voiceRef: input.voiceRef ? String(input.voiceRef) : undefined,
-      language: (input.language || "Indonesian").toString(),
+      language: (input.language || process.env.LANGUAGE || "Indonesian").toString(),
     };
     const job = createJob(videoPath, sanitized);
     await fsp.mkdir(job.dir, { recursive: true });
