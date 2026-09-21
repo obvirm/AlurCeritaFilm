@@ -289,7 +289,7 @@ async function runPipeline(job, input) {
   const manifestPath = path.join(job.dir, "manifest.json");
   await runNode(job, "ANALYSIS", "src/server/analyze.ts", [
     videoPath, job.dir, model,
-  ], { env: { CHUNK_DURATION: String(chunkDuration) } });
+  ], { env: { CHUNK_DURATION: String(chunkDuration), LANGUAGE: input.language || "Indonesian" } });
   // Cek hasil analysis: manifest.json harus ada & punya scenes
   if (!fs.existsSync(manifestPath)) {
     let detail = "manifest.json tidak dibuat oleh analysis.";

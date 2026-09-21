@@ -32,13 +32,38 @@ export function parseVlmJson(raw: string): VlmResponse {
   return { scenes: [] };
 }
 
-function loadStylePrompt(): string {
+const LANGUAGE_MAP: Record<string, { name: string; example: string }> = {
+  Indonesian: { name: "Indonesia", example: "Indonesian sehari-hari" },
+  English: { name: "Inggris", example: "casual everyday English" },
+  Japanese: { name: "Jepang", example: "日本語のカジュアルな話し言葉" },
+  Korean: { name: "Korea", example: "한국어 캐주얼한 말투" },
+  Mandarin: { name: "Mandarin", example: "普通话日常口语" },
+  Arabic: { name: "Arab", example: "العربية العامية" },
+  Hindi: { name: "Hindi", example: "हिंदी बोलचीत" },
+  Spanish: { name: "Spanyol", example: "español cotidiano" },
+  French: { name: "Prancis", example: "français familier" },
+  German: { name: "Jerman", example: "umgangssprachliches Deutsch" },
+  Portuguese: { name: "Portugis", example: "português do dia a dia" },
+  Russian: { name: "Rusia", example: "разговорный русский" },
+  Thai: { name: "Thai", example: "ภาษาไทยพูดทั่วไป" },
+  Vietnamese: { name: "Vietnam", example: "tiếng Việt giao tiếp hàng ngày" },
+  Turkish: { name: "Turki", example: "günlük Türkçe" },
+  Dutch: { name: "Belanda", example: "informeel Nederlands" },
+  Polish: { name: "Polandia", example: "potoczny polski" },
+  Italian: { name: "Italia", example: "italiano colloquiale" },
+  Swedish: { name: "Swedia", example: "vardagligt svenska" },
+  Ukrainian: { name: "Ukraina", example: "розмовна українська" },
+};
+
+function loadStylePrompt(language: string): string {
+  const lang = LANGUAGE_MAP[language] || LANGUAGE_MAP.Indonesian;
   const mdPath = path.join(process.cwd(), "prompts", "narration_prompt.md");
+  let base: string;
   try {
-    return fs.readFileSync(mdPath, "utf8");
+    base = fs.readFileSync(mdPath, "utf8");
   } catch {
-    return `PERAN
-Kamu adalah storyteller video short Indonesia yang energik, ekspresif, humoris, dan terdengar seperti sedang bercerita seru ke teman dekat. Narasi harus enak dibacakan sebagai voice-over TikTok/YouTube Shorts.
+    base = `PERAN
+Kamu adalah storyteller video short ${lang.name} yang energik, ekspresif, humoris, dan terdengar seperti sedang bercerita seru ke teman dekat. Narasi harus enak dibacakan sebagai voice-over TikTok/YouTube Shorts.
 
 PRIORITAS UTAMA
 - Akurasi audiovisual selalu lebih penting daripada komedi atau gaya bahasa.
@@ -47,10 +72,9 @@ PRIORITAS UTAMA
 - Jaga kesinambungan dengan konteks sebelumnya dan jangan mengulang informasi yang sama.
 
 GAYA NARASI
-- Gunakan Bahasa Indonesia sehari-hari yang kasual, cepat, jelas, dan tidak kaku.
+- Gunakan Bahasa ${lang.name} sehari-hari yang kasual, cepat, jelas, dan tidak kaku.
 - Fokus pada aksi, konflik, reaksi karakter, dan bagian paling menarik; lewati detail yang membosankan.
 - Sisipkan komentar lucu, heran, atau sarkas ringan hanya jika cocok dengan kejadian.
-- Gunakan partikel seperti "nah", "coy", "dong", "wak", "pak", "bang", "gila", "bisa-bisanya", dan "banget" secara natural dan hemat. Jangan menumpuk slang atau memakainya di setiap kalimat.
 - Boleh memakai dialog langsung pendek jika ucapan karakter benar-benar terdengar atau maknanya jelas dari konteks.
 - Jangan memakai bahasa formal, gaya berita, clickbait palsu, makian berat, atau humor yang menutupi jalan cerita.
 - Jangan membuka jawaban dengan kalimat meta seperti "Tentu", "Berikut hasilnya", atau "Narasi:".
@@ -66,6 +90,12 @@ FORMAT VOICE-OVER
 - Kalimat harus mudah diucapkan, tidak kepanjangan, dan tetap bisa dipahami tanpa membaca description.
 - description bersifat faktual dan konkret; narration_text bersifat kasual dan menghibur.`;
   }
+  // Replace hardcoded Indonesian references with selected language
+  return base
+    .replace(/Indonesia/g, lang.name)
+    .replace(/Bahasa Indonesia/g, `Bahasa ${lang.name}`)
+    .replace(/Bahasa Indonesia sehari-hari yang kasual/g, `${lang.example}`)
+    .replace(/"nah", "coy", "dong", "wak", "pak", "bang", "gila", "bisa-bisanya", dan "banget"/g, lang.name === "Indonesia" ? '"nah", "coy", "dong", "wak", "pak", "bang", "gila", "bisa-bisanya", dan "banget"' : '"similiar particles natural to the language")';
 }
 
 // HARDCODE — penentuan menit & part (jangan pindah ke MD)
@@ -78,7 +108,7 @@ function getDurationPrompt(): string {
   return DURATION_PROMPT_TEMPLATE.replaceAll("{{MINUTES}}", minutes).replaceAll("{{PARTS}}", parts);
 }
 
-export const STORYTELLER_SYSTEM_INSTRUCTION = `${loadStylePrompt()}\n\n${getDurationPrompt()}`;
+export const STORYTELLER_SYSTEM_INSTRUCTION = `${loadStylePrompt(process.env.LANGUAGE || "Indonesian")}\n\n${getDurationPrompt()}`;
 
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "http://localhost:20128/v1";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
