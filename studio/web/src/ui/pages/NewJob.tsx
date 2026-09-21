@@ -4,7 +4,7 @@ import { VideoDropzone } from "@/ui/components/VideoDropzone";
 import { TemplateGrid } from "@/ui/components/TemplateGrid";
 import { getTemplates, runPipeline, uploadVideo, type TemplateMeta } from "@/app/api/client";
 import { useAppStore } from "@/app/stores/appStore";
-import { Loader2, AlertCircle, Settings2, Clapperboard, Layers, Mic2, Sparkles, Zap, Scissors } from "lucide-react";
+import { Loader2, AlertCircle, Settings2, Clapperboard, Layers, Mic2, Sparkles, Zap, Scissors, Music } from "lucide-react";
 
 export function NewJob() {
   const navigate = useNavigate();
@@ -39,6 +39,9 @@ export function NewJob() {
   const [voiceRefName, setVoiceRefName] = useState<string | null>(null);
   const [voiceRefUploading, setVoiceRefUploading] = useState(false);
   const [language, setLanguage] = useState("Indonesian");
+  const [bgmPath, setBgmPath] = useState<string | null>(null);
+  const [bgmName, setBgmName] = useState<string | null>(null);
+  const [bgmUploading, setBgmUploading] = useState(false);
 
   useEffect(() => {
     getTemplates().then(setTemplates).catch(() => {});
@@ -77,6 +80,20 @@ export function NewJob() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setOverlayUploading(false);
+    }
+  };
+
+  const handleBgmFile = async (file: File) => {
+    setError(null);
+    setBgmUploading(true);
+    try {
+      const { videoPath, name } = await uploadVideo(file);
+      setBgmPath(videoPath);
+      setBgmName(name);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBgmUploading(false);
     }
   };
 
@@ -127,6 +144,7 @@ export function NewJob() {
         overlayCss: overlayMode === "css" ? overlayCss : undefined,
         voiceRef: voiceRef || undefined,
         language: language || undefined,
+        bgm: bgmPath || undefined,
       });
       navigate(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (e) {
@@ -333,6 +351,8 @@ export function NewJob() {
             </select>
             <span className="text-xs text-[#71717a]">Otomatis ke TTS + Whisper caption</span>
           </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Lead (s)</span>
             <input
               type="number"
               value={lead}
@@ -438,6 +458,31 @@ export function NewJob() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="rounded-[20px] border border-[#27272A] bg-[#0A0A0A] p-5">
+        <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#B6FF3B] text-black">
+            <Music className="h-4 w-4" />
+          </span>
+          4 · Musik Latar (BGM) <span className="text-xs font-medium text-[#a1a1aa]">di-mix ke narasi · mp3/flac/wav</span>
+        </div>
+        <label className="block cursor-pointer rounded-xl border border-dashed border-[#27272A] px-3 py-3 text-center text-xs text-[#a1a1aa] hover:border-[#B6FF3B]/40">
+          <input
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            disabled={bgmUploading}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleBgmFile(f); e.target.value = ""; }}
+          />
+          {bgmUploading ? "Uploading..." : bgmName ? `✓ ${bgmName}` : "Upload musik latar (opsional)"}
+        </label>
+        {bgmPath && (
+          <p className="text-xs text-[#B6FF3B]">BGM aktif · {bgmName}</p>
+        )}
+        <p className="mt-2 text-xs text-[#71717a]">
+          Kosongkan = tanpa musik. Isi = audio di-mix otomatis dengan narasi TTS.
+        </p>
       </section>
 
       <section className="rounded-[20px] border border-[#27272A] bg-[#0A0A0A] p-5">
