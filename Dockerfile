@@ -32,6 +32,18 @@ COPY studio/web/dist ./studio/web/dist
 # --- source backend/pipeline ---
 COPY src ./src
 
+# --- Whisper ONNX (caption tscaps) dibake ke image — tanpa download saat run ---
+# Layout = cache transformers.js; diserve entrypoint via :8877. Cuma model
+# base (default pipeline) supaya image tidak bengkak.
+RUN mkdir -p /root/.cache/huggingface/hub/models--onnx-community--whisper-base_timestamped/snapshots/default/onnx \
+ && cd /root/.cache/huggingface/hub/models--onnx-community--whisper-base_timestamped/snapshots/default \
+ && for f in config.json tokenizer_config.json generation_config.json merges.txt vocab.json tokenizer.json preprocessor_config.json; do \
+      wget -q "https://huggingface.co/onnx-community/whisper-base_timestamped/resolve/main/$f"; \
+    done \
+ && cd onnx \
+ && wget -q https://huggingface.co/onnx-community/whisper-base_timestamped/resolve/main/onnx/encoder_model_quantized.onnx \
+ && wget -q https://huggingface.co/onnx-community/whisper-base_timestamped/resolve/main/onnx/decoder_model_merged_quantized.onnx
+
 # --- entrypoint ---
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh \
