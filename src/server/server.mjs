@@ -361,7 +361,7 @@ async function runPipeline(job, input) {
   const ttsLanguage = input.language || "Indonesian";
   httpTtsArgs.push("--language", ttsLanguage);
   // Voice cloning support
-  const voiceRef = input.voiceRef || process.env.AUDIOCPP_VOICE_REF;
+  const voiceRef = input.voiceRef || process.env.AUDIOCPP_VOICE_REF || path.join(ROOT, "src", "patrick_ref_voice.wav");
   if (voiceRef) httpTtsArgs.push("--voice-ref", voiceRef);
   await run(job, `TTS HTTP (Higgs Audio v3)`, process.execPath, [...httpTtsArgs]);
   pushLog(job, `[tts] selesai -> ${rel(fullNarrationWav)}`);
@@ -850,7 +850,7 @@ server.listen(PORT, () => {
   const hostDataDir = (process.env.HOST_DATA_DIR || "").replace(/\\/g, "/").replace(/\/$/, "");
   const warmupBody = { model: ttsModel, input: "warmup", response_format: "wav", language: process.env.LANGUAGE || "Indonesian" };
   try {
-    const refPath = process.env.AUDIOCPP_VOICE_REF;
+    const refPath = process.env.AUDIOCPP_VOICE_REF || path.join(ROOT, "src", "patrick_ref_voice.wav");
     if (refPath && fs.existsSync(refPath)) {
       if (hostDataDir && refPath.startsWith("/app/data")) {
         warmupBody.voice_ref = { type: "path", path: hostDataDir + refPath.slice("/app/data".length) };
