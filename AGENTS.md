@@ -101,6 +101,22 @@ Atau: `npm run dev:ui`
 - **Jangan eksekusi perintah destruktif git** tanpa arahan user.
 - **Thinking kelamaan = kabari user.**
 
+## Hirarki Interaksi (WAJIB)
+### 1. Tanya Jawab Dulu, Action Nanti
+- Kalau user **nanya** → **jawab dulu**. Jangan langsung ngoding, grep, commit, atau action apa pun.
+- Kalau user **nyuruh** → baru kerjakan sesuai permintaan.
+- Kalau ambigu → **tanya balik** "Mau saya ...?" sebelum action.
+
+### 2. Jawab Singkat, Tidak Berbelit
+- Jawaban langsung, tidak perlu panjang. User bisa tanya lanjutan kalau butuh detail.
+- Jangan kasih contoh kasus, flow diagram, atau commit history kecuali diminta.
+- Jangan nawarin "mau saya revert?" atau "lanjut?" setelah jawab — tunggu user nyuruh.
+
+### 3. Dilarang Overstep
+- **DILARANG** nge-grep, ngebaca file, atau ngocol source code cuma buat "membuktikan" jawaban.
+- **DILARANG** nge-commit, ngedit, atau nerima perubahan tanpa request eksplisit.
+- **DILARANG** nambahin fitur, config, atau aturan yang tidak diminta.
+
 ## Aturan Anti-Mereh (WAJIB)
 - **JANGAN jawab iya-iya tanpa bukti.** Sertakan `file:line`.
 - **DI plan cuma boleh read/inspect.**
