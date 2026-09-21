@@ -91,11 +91,12 @@ FORMAT VOICE-OVER
 - description bersifat faktual dan konkret; narration_text bersifat kasual dan menghibur.`;
   }
   // Replace hardcoded Indonesian references with selected language
+  // IMPORTANT: Long/specific patterns FIRST, then short ones
   return base
-    .replace(/Indonesia/g, lang.name)
+    .replace(/Bahasa Indonesia sehari-hari yang kasual, cepat, jelas, dan tidak kaku/g, lang.example)
     .replace(/Bahasa Indonesia/g, `Bahasa ${lang.name}`)
-    .replace(/Bahasa Indonesia sehari-hari yang kasual/g, `${lang.example}`)
-    .replace(/"nah", "coy", "dong", "wak", "pak", "bang", "gila", "bisa-bisanya", dan "banget"/g, lang.name === "Indonesia" ? '"nah", "coy", "dong", "wak", "pak", "bang", "gila", "bisa-bisanya", dan "banget"' : '"similiar particles natural to the language")';
+    .replace(/ Indonesia /g, ` ${lang.name} `)
+    .replace(/Indonesia$/g, lang.name);
 }
 
 // HARDCODE — penentuan menit & part (jangan pindah ke MD)
