@@ -30,6 +30,7 @@ interface Args {
   width: number;
   height: number;
   language?: string;
+  whisperQuality?: "tiny" | "base" | "small" | "medium";
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -106,7 +107,8 @@ async function run(options: Args): Promise<void> {
       page.on('pageerror', (error) => console.error('[page error]', error.message));
       const url = `${resolveUrl(server)}template.html` +
         `?width=${options.width}&height=${options.height}&output=${encodeURIComponent(path.basename(output))}` +
-        (options.language ? `&language=${encodeURIComponent(options.language)}` : '');
+        (options.language ? `&language=${encodeURIComponent(options.language)}` : '') +
+        (options.whisperQuality ? `&whisper_quality=${encodeURIComponent(options.whisperQuality)}` : '');
       console.log(`[tscaps-template-cli] Opening ${url}`);
       try {
         await page.goto(url, { waitUntil: 'networkidle', timeout: 300_000 });
@@ -164,5 +166,6 @@ function parseArgs(argv: string[]): Args {
     width: Number(values.get('width') || 1080),
     height: Number(values.get('height') || 1920),
     language: values.get('language') || undefined,
+    whisperQuality: (values.get('whisper-quality') || undefined) as Args['whisperQuality'],
   };
 }

@@ -466,6 +466,8 @@ async function runPipeline(job, input) {
           "--output", finalCaptioned,
           "--width", "1080",
           "--height", "1920",
+          "--language", input.language || process.env.LANGUAGE || "Indonesian",
+          ...(input.whisperQuality ? ["--whisper-quality", input.whisperQuality] : []),
         ], {
           env: {
             TSCAPS_CHROME_PATH: CFG.tscapsChrome,

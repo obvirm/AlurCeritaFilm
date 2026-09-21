@@ -195,9 +195,10 @@ window.renderMovie2short = async () => {
 
   // Default transcriber is WhisperTranscriber with MediaBunnyAudioDecoder.
   // It listens to the audio from final_short.mp4 and produces word-level timing.
+  const whisperModel = (params.get('whisper_quality') || 'base') as 'tiny' | 'base' | 'small' | 'medium';
   const builder = new RenderPipelineBuilder()
     .withInputVideo(inputBlob)
-    .withTranscriberOptions({ language: params.get('language') || 'id' });
+    .withTranscriberOptions({ language: params.get('language') || 'id', model: whisperModel });
   if (segmentSplitter) builder.withSegmentSplitter(segmentSplitter);
   if (line.type === 'fixed-tail') {
     builder.withLineSplitter(new FixedTailLineSplitter({

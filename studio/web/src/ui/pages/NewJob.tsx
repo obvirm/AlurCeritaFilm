@@ -39,6 +39,7 @@ export function NewJob() {
   const [voiceRefName, setVoiceRefName] = useState<string | null>(null);
   const [voiceRefUploading, setVoiceRefUploading] = useState(false);
   const [language, setLanguage] = useState("Indonesian");
+  const [whisperQuality, setWhisperQuality] = useState<"tiny" | "base" | "small" | "medium">("base");
   const [bgmPath, setBgmPath] = useState<string | null>(null);
   const [bgmName, setBgmName] = useState<string | null>(null);
   const [bgmUploading, setBgmUploading] = useState(false);
@@ -145,6 +146,7 @@ export function NewJob() {
         voiceRef: voiceRef || undefined,
         language: language || undefined,
         bgm: bgmPath || undefined,
+        whisperQuality: whisperQuality || undefined,
       });
       navigate(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (e) {
@@ -351,6 +353,19 @@ export function NewJob() {
             </select>
             <span className="text-xs text-[#71717a]">Otomatis ke TTS + Whisper caption</span>
           </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Whisper Quality</span>
+            <select
+              value={whisperQuality}
+              onChange={(e) => setWhisperQuality(e.target.value as typeof whisperQuality)}
+              className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+            >
+              <option value="tiny">Tiny — tercepat, akurasi rendah</option>
+              <option value="base">Base — seimbang (default)</option>
+              <option value="small">Small — lebih akurat</option>
+              <option value="medium">Medium — paling akurat</option>
+            </select>
+            <span className="text-xs text-[#71717a]">Ukuran model & kecepatan transcription</span>
           <label className="space-y-1.5">
             <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Lead (s)</span>
             <input
