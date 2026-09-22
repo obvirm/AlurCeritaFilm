@@ -2,7 +2,6 @@ import path from "path";
 import fs from "fs/promises";
 import { analyzeChunkWithR9Video, SceneOutput } from "./analyzer/model.js";
 import { extractAudio } from "./analyzer/audioExtractor.js";
-import { transcribeAudio } from "./analyzer/whisper.js";
 import { synthesizeNarration } from "./synthesizer/narrationSynthesizer.js";
 
 export interface PipelineOptions {

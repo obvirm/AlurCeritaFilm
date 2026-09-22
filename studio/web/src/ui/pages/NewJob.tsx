@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { VideoDropzone } from "@/ui/components/VideoDropzone";
 import { TemplateGrid } from "@/ui/components/TemplateGrid";
 import { getTemplates, runPipeline, uploadVideo, type TemplateMeta } from "@/app/api/client";
+import { getOverlayTemplates, saveOverlayTemplate, deleteOverlayTemplate, loadOverlayTemplate, type OverlayTemplate } from "@/app/api/client";
 import { useAppStore } from "@/app/stores/appStore";
-import { Loader2, AlertCircle, Settings2, Clapperboard, Layers, Mic2, Sparkles, Zap, Scissors, Music } from "lucide-react";
+import { Loader2, AlertCircle, Settings2, Clapperboard, Layers, Mic2, Sparkles, Zap, Scissors, Music, Trash2, Save } from "lucide-react";
 
 export function NewJob() {
   const navigate = useNavigate();
@@ -43,9 +44,14 @@ export function NewJob() {
   const [bgmPath, setBgmPath] = useState<string | null>(null);
   const [bgmName, setBgmName] = useState<string | null>(null);
   const [bgmUploading, setBgmUploading] = useState(false);
+  const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>([]);
+  const [selectedOverlayTpl, setSelectedOverlayTpl] = useState<string | null>(null);
+  const [savingTpl, setSavingTpl] = useState(false);
+  const [tplName, setTplName] = useState("");
 
   useEffect(() => {
     getTemplates().then(setTemplates).catch(() => {});
+    getOverlayTemplates().then(setOverlayTemplates).catch(() => {});
     fetch("/api/jobs")
       .then((r) => r.json())
       .then((d) => {
@@ -82,6 +88,45 @@ export function NewJob() {
     } finally {
       setOverlayUploading(false);
     }
+  };
+
+  const handleSaveOverlayTpl = async () => {
+    setError(null);
+    setSavingTpl(true);
+    try {
+      const name = tplName.trim() || overlayImageName || `overlay-${Date.now()}`;
+      await saveOverlayTemplate({
+        id: selectedOverlayTpl || undefined,
+        name,
+        html: overlayHtml,
+        css: overlayCss,
+      });
+      setSelectedOverlayTpl(null);
+      setTplName("");
+      await getOverlayTemplates().then(setOverlayTemplates).catch(() => {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingTpl(false);
+    }
+  };
+
+  const handleLoadOverlayTpl = async (id: string) => {
+    setError(null);
+    const tpl = await loadOverlayTemplate(id);
+    if (tpl) {
+      setOverlayHtml(tpl.html);
+      setOverlayCss(tpl.css);
+      setSelectedOverlayTpl(tpl.id);
+      setTplName(tpl.name);
+    }
+  };
+
+  const handleDeleteOverlayTpl = async (id: string) => {
+    setError(null);
+    await deleteOverlayTemplate(id).catch(() => {});
+    if (selectedOverlayTpl === id) setSelectedOverlayTpl(null);
+    setOverlayTemplates((prev) => prev.filter((t) => t.id !== id));
   };
 
   const handleBgmFile = async (file: File) => {
@@ -472,6 +517,45 @@ export function NewJob() {
                 <div className="absolute left-0 top-0 origin-top-left" style={{ width: 1080, height: 1920, transform: "scale(0.15)" }} dangerouslySetInnerHTML={{ __html: overlayHtml }} />
               </div>
             </div>
+          </div>
+        )}
+        {overlayMode === "css" && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <select
+              value={selectedOverlayTpl || ""}
+              onChange={(e) => { if (e.target.value) handleLoadOverlayTpl(e.target.value); else setSelectedOverlayTpl(null); }}
+              className="rounded-lg border border-[#27272A] bg-[#0A0A0A] px-3 py-1.5 text-xs text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+            >
+              <option value="">-- Load Template --</option>
+              {overlayTemplates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Nama template..."
+              value={tplName}
+              onChange={(e) => setTplName(e.target.value)}
+              className="rounded-lg border border-[#27272A] bg-[#0A0A0A] px-3 py-1.5 text-xs text-white placeholder-[#71717a] focus:border-[#B6FF3B]/40 focus:outline-none w-[160px]"
+            />
+            <button
+              onClick={handleSaveOverlayTpl}
+              disabled={savingTpl}
+              className="inline-flex items-center gap-1 rounded-lg border border-[#B6FF3B]/40 bg-[#B6FF3B]/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#B6FF3B]/20 disabled:opacity-50 transition-colors"
+            >
+              <Save className="h-3 w-3" /> {savingTpl ? "Saving..." : "Save Template"}
+            </button>
+            {selectedOverlayTpl && (
+              <button
+                onClick={() => handleDeleteOverlayTpl(selectedOverlayTpl)}
+                className="inline-flex items-center gap-1 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-950/60 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" /> Delete
+              </button>
+            )}
+            {overlayTemplates.length > 0 && (
+              <p className="ml-auto text-[10px] text-[#71717a]">{overlayTemplates.length} template tersimpan</p>
+            )}
           </div>
         )}
       </section>

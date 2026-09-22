@@ -108,6 +108,20 @@ function migrate() {
   db.run("CREATE INDEX IF NOT EXISTS idx_artifacts_job  ON job_artifacts(job_id)");
   db.run("CREATE INDEX IF NOT EXISTS idx_logs_job       ON job_logs(job_id)");
   db.run("CREATE INDEX IF NOT EXISTS idx_scenes_job     ON scenes(job_id)");
+
+  // ── overlay templates ──────────────────────────────────────────────────────
+  db.run(`
+    CREATE TABLE IF NOT EXISTS overlay_templates (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT,
+      html        TEXT NOT NULL,
+      css         TEXT NOT NULL,
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    )
+  `);
+  db.run("CREATE INDEX IF NOT EXISTS idx_overlay_name ON overlay_templates(name)");
 }
 
 // ── query helpers ───────────────────────────────────────────────────────────
@@ -250,4 +264,44 @@ export function closeDb() {
   if (_flushTimer) { clearInterval(_flushTimer); _flushTimer = null; }
   flush();
   if (_db) { _db.close(); _db = null; }
+}
+
+// ── overlay templates ───────────────────────────────────────────────────────
+
+/** Insert a new overlay template. Returns the row. */
+export function insertOverlayTemplate({ id, name, description, html, css, createdAt, updatedAt }) {
+  run(
+    `INSERT INTO overlay_templates (id, name, description, html, css, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, name, description ?? null, html, css, createdAt, updatedAt],
+  );
+  return getOverlayTemplate(id);
+}
+
+/** Update an existing overlay template. */
+export function updateOverlayTemplate(id, fields) {
+  const sets = [];
+  const vals = [];
+  if (fields.name !== undefined)      { sets.push("name = ?");          vals.push(fields.name); }
+  if (fields.description !== undefined) { sets.push("description = ?");   vals.push(fields.description); }
+  if (fields.html !== undefined)       { sets.push("html = ?");          vals.push(fields.html); }
+  if (fields.css !== undefined)        { sets.push("css = ?");           vals.push(fields.css); }
+  if (!sets.length) return;
+  vals.push(new Date().toISOString());
+  vals.push(id);
+  run(`UPDATE overlay_templates SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`, vals);
+}
+
+/** Delete an overlay template. */
+export function deleteOverlayTemplate(id) {
+  run("DELETE FROM overlay_templates WHERE id = ?", [id]);
+}
+
+/** List all overlay templates. */
+export function listOverlayTemplates() {
+  return all("SELECT * FROM overlay_templates ORDER BY updated_at DESC");
+}
+
+/** Get a single overlay template. */
+export function getOverlayTemplate(id) {
+  return one("SELECT * FROM overlay_templates WHERE id = ?", [id]);
 }

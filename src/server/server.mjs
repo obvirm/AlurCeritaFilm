@@ -27,7 +27,7 @@ import { spawn, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
-import { initDb, insertJob, updateJob, getJob as dbGetJob, listJobs as dbListJobs, appendLog as dbAppendLog, addArtifact as dbAddArtifact, getJobLogs as dbGetJobLogs, getJobArtifacts as dbGetJobArtifacts, closeDb } from "./db.mjs";
+import { initDb, insertJob, updateJob, getJob as dbGetJob, listJobs as dbListJobs, appendLog as dbAppendLog, addArtifact as dbAddArtifact, getJobLogs as dbGetJobLogs, getJobArtifacts as dbGetJobArtifacts, closeDb, insertOverlayTemplate as dbInsertOverlayTemplate, updateOverlayTemplate as dbUpdateOverlayTemplate, deleteOverlayTemplate as dbDeleteOverlayTemplate, listOverlayTemplates as dbListOverlayTemplates, getOverlayTemplate as dbGetOverlayTemplate } from "./db.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
@@ -721,6 +721,71 @@ const server = http.createServer(async (req, res) => {
     const log = dbGetJobLogs(job.id);
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, log }));
+    return;
+  }
+
+  // --- API: overlay templates --------------------------------------------------
+  if (pathname === "/api/overlay-templates" && req.method === "GET") {
+    const rows = dbListOverlayTemplates();
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, templates: rows }));
+    return;
+  }
+
+  if (pathname === "/api/overlay-templates" && req.method === "POST") {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    let input;
+    try { input = JSON.parse(body); } catch { input = {}; }
+    if (!input.name || !input.html || !input.css) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "name, html, css required" }));
+      return;
+    }
+    const id = input.id || `tpl_${Date.now()}`;
+    const now = new Date().toISOString();
+    dbInsertOverlayTemplate({
+      id, name: input.name, description: input.description ?? "",
+      html: input.html.slice(0, 200000), css: input.css.slice(0, 200000),
+      createdAt: now, updatedAt: now,
+    });
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, id }));
+    return;
+  }
+
+  if (pathname === "/api/overlay-templates/save" && req.method === "POST") {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    let input;
+    try { input = JSON.parse(body); } catch { input = {}; }
+    if (!input.id || !input.html || !input.css) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "id, html, css required" }));
+      return;
+    }
+    dbUpdateOverlayTemplate(input.id, {
+      name: input.name, description: input.description,
+      html: input.html.slice(0, 200000), css: input.css.slice(0, 200000),
+    });
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  const tplMatch = pathname.match(/^\/api\/overlay-templates\/([\w-]+)$/);
+  if (tplMatch && req.method === "DELETE") {
+    dbDeleteOverlayTemplate(tplMatch[1]);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  if (tplMatch && req.method === "GET") {
+    const row = dbGetOverlayTemplate(tplMatch[1]);
+    if (!row) { res.writeHead(404); res.end(JSON.stringify({ ok: false })); return; }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, template: row }));
     return;
   }
 

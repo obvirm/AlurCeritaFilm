@@ -133,6 +133,43 @@ export function fileUrl(jobId: string, name: string) {
   return `${BASE}/files/${encodeURIComponent(jobId)}/${encodeURIComponent(name).replace(/%2F/g, "/")}`;
 }
 
+export interface OverlayTemplate {
+  id: string;
+  name: string;
+  description: string;
+  html: string;
+  css: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getOverlayTemplates() {
+  const j = await jsonFetch<{ ok: boolean; templates: OverlayTemplate[] }>(`${BASE}/api/overlay-templates`);
+  return j.templates || [];
+}
+
+export async function saveOverlayTemplate(payload: { id?: string; name: string; description?: string; html: string; css: string }) {
+  const url = payload.id ? `${BASE}/api/overlay-templates/save` : `${BASE}/api/overlay-templates`;
+  const method = payload.id ? "POST" : "POST";
+  const body = payload.id ? JSON.stringify({ ...payload }) : JSON.stringify(payload);
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body });
+  const j = (await r.json()) as { ok: boolean; error?: string; id?: string };
+  if (!r.ok || !j.ok) throw new Error(j.error || `save failed ${r.status}`);
+  return { ok: true, id: j.id || payload.id };
+}
+
+export async function deleteOverlayTemplate(id: string) {
+  const j = await jsonFetch<{ ok: boolean; error?: string }>(`${BASE}/api/overlay-templates/${id}`, { method: "DELETE" });
+  return j.ok;
+}
+
+export async function loadOverlayTemplate(id: string): Promise<OverlayTemplate | null> {
+  try {
+    const j = await jsonFetch<{ ok: boolean; template: OverlayTemplate }>(`${BASE}/api/overlay-templates/${id}`);
+    return j.template ?? null;
+  } catch { return null; }
+}
+
 export type WsMessage = { type: "log"; jobId: string; entry: JobLogEntry } | { type: "status"; jobId: string; status: JobStatus; stage: JobStage };
 
 export function connectJobWS(
