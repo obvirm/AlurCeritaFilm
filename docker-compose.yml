@@ -15,6 +15,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./data/reference:/app/data/reference:ro
+      - ./data/chrome-profile:/tmp/m2s-chrome-profile
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"

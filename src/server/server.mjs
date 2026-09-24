@@ -10,6 +10,7 @@
  * Endpoints:
  *   POST /api/upload?name=<file.mp4>   raw body -> data/uploads/<name>
     *   POST /api/run                      { videoPath, model, stretch, hzoom, caption, ttsModel } -> { jobId }
+  *   POST /api/preview-frame            { videoPath, stretch?, hzoom?, atSec? } -> { image(dataURL) }
  *   GET  /api/jobs/:id                 status + artifacts job
  *   GET  /api/outputs                  daftar job terakhir
  *   WS   /ws?job=<jobId>               stream log live
@@ -340,6 +341,7 @@ async function runPipeline(job, input) {
         PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath,
         TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates,
         TSCAPS_WHISPER_LANGUAGE: onlyLang,
+        CHROME_USER_DATA_DIR: process.env.CHROME_USER_DATA_DIR || "/tmp/m2s-chrome-profile",
       },
     });
     pushLog(job, `[caption] selesai -> ${rel(onlyOut)}`);
@@ -517,6 +519,7 @@ async function runPipeline(job, input) {
             PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath,
             TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates,
             TSCAPS_WHISPER_LANGUAGE: ttsLanguage,
+            CHROME_USER_DATA_DIR: process.env.CHROME_USER_DATA_DIR || "/tmp/m2s-chrome-profile",
           },
         });
         pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
@@ -596,6 +599,58 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ ok: false, error: String(e) }));
+    }
+    return;
+  }
+
+  // --- API: preview 1 frame dengan filter render (stretch/hzoom) ------------
+  // Body: { videoPath, stretch?, hzoom?, atSec? } -> { ok, image(dataURL), atSec }
+  // Filter IDENTIK dengan src/renderer/renderer.ts (tanpa camera plan: tengah).
+  if (pathname === "/api/preview-frame" && req.method === "POST") {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    let input;
+    try { input = JSON.parse(body); } catch { input = {}; }
+    const videoPath = input.videoPath;
+    if (!videoPath || !fs.existsSync(videoPath)) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "videoPath tidak valid" }));
+      return;
+    }
+    const num = (v) => {
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      if (typeof v === "string" && v.trim() !== "") {
+        const n = Number(v.replace(",", "."));
+        if (Number.isFinite(n)) return n;
+      }
+      return undefined;
+    };
+    const stretch = num(input.stretch);
+    const hzoom = num(input.hzoom);
+    const W = 1080, H = 1920, foregroundZoom = 1.15;
+    const useStretch = stretch !== undefined && stretch >= 0;
+    let filter;
+    if (useStretch) {
+      const hz = hzoom !== undefined && hzoom > 1 ? hzoom : 1;
+      const fgH = Math.round(608 + (1920 - 608) * Math.min(1, Math.max(0, stretch)));
+      const fgW = Math.round(W * hz);
+      filter = `[0:v]split=2[bg_src][fg_src];[bg_src]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=50[bga];[bga]eq=brightness=-0.3[bg];[fg_src]scale=${fgW}:${fgH},crop=${W}:${fgH}[fg];[bg][fg]overlay=0:${Math.round((H - fgH) / 2)}:format=auto[outv]`.replace(/\s+/g, "");
+    } else {
+      filter = `[0:v]split=2[bg_src][fg_src];[bg_src]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=50[bga];[bga]eq=brightness=-0.3[bg];[fg_src]scale=${W}:${H}:force_original_aspect_ratio=decrease,scale=iw*${foregroundZoom}:ih*${foregroundZoom}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2:format=auto[outv]`.replace(/\s+/g, "");
+    }
+    try {
+      const durOut = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", videoPath], { encoding: "utf8" });
+      const dur = Number(durOut.trim()) || 10;
+      const atSec = Math.min(Math.max(num(input.atSec) ?? 10, 0), Math.max(0, dur - 0.5));
+      const tmpPng = path.join(os.tmpdir(), `m2s-preview-${Date.now()}.png`);
+      execFileSync("ffmpeg", ["-nostdin", "-y", "-ss", String(atSec), "-i", videoPath, "-frames:v", "1", "-filter_complex", filter, "-map", "[outv]", tmpPng], { stdio: "pipe" });
+      const b64 = fs.readFileSync(tmpPng).toString("base64");
+      try { fs.unlinkSync(tmpPng); } catch {}
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, image: `data:image/png;base64,${b64}`, atSec, stretch, hzoom }));
+    } catch (e) {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: String(e.message || e).slice(0, 300) }));
     }
     return;
   }

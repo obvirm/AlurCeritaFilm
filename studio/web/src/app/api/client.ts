@@ -110,6 +110,7 @@ export interface RunPayload {
 }
 
 export async function runPipeline(p: RunPayload) {
+
   const j = await jsonFetch<{ ok: boolean; jobId: string; error?: string }>(`${BASE}/api/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -117,6 +118,16 @@ export async function runPipeline(p: RunPayload) {
   });
   if (!j.ok || !j.jobId) throw new Error(j.error || `run failed for ${p.videoPath}`);
   return { jobId: j.jobId };
+}
+
+export async function previewFrame(p: { videoPath: string; stretch?: number; hzoom?: number; atSec?: number }) {
+  const j = await jsonFetch<{ ok: boolean; image?: string; atSec?: number; error?: string }>(`${BASE}/api/preview-frame`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(p),
+  });
+  if (!j.ok || !j.image) throw new Error(j.error || "preview gagal");
+  return { image: j.image, atSec: j.atSec };
 }
 
 export const getJobs = async () => (await jsonFetch<{ ok: boolean; jobs: JobsListItem[] }>(`${BASE}/api/jobs`)).jobs || [];

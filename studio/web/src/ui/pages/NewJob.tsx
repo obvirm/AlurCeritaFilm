@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { VideoDropzone } from "@/ui/components/VideoDropzone";
 import { TemplateGrid } from "@/ui/components/TemplateGrid";
-import { getTemplates, runPipeline, uploadVideo, type TemplateMeta } from "@/app/api/client";
+import { getTemplates, runPipeline, uploadVideo, previewFrame, type TemplateMeta } from "@/app/api/client";
 import { getOverlayTemplates, saveOverlayTemplate, deleteOverlayTemplate, loadOverlayTemplate, type OverlayTemplate } from "@/app/api/client";
 import { useAppStore } from "@/app/stores/appStore";
 import { Loader2, AlertCircle, Settings2, Clapperboard, Layers, Mic2, Sparkles, Zap, Scissors, Music, Trash2, Save } from "lucide-react";
@@ -26,6 +26,28 @@ export function NewJob() {
   const [targetMinutes, setTargetMinutes] = useState(0);
   const [stretch, setStretch] = useState<number | undefined>(undefined);
   const [hzoom, setHzoom] = useState<number | undefined>(1.15);
+  const parseNum = (v: string): number | undefined => {
+    if (v === "") return undefined;
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const [previewAtSec, setPreviewAtSec] = useState<number | undefined>(12);
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const handlePreview = async () => {
+    if (!videoPath) { setPreviewError("Upload video dulu"); return; }
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const r = await previewFrame({ videoPath, stretch, hzoom, atSec: previewAtSec });
+      setPreviewImg(r.image);
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
   const [caption, setCaption] = useState(true);
   const [template, setTemplate] = useState("loki");
   const [lead, setLead] = useState(5);
@@ -40,7 +62,7 @@ export function NewJob() {
   const [voiceRefName, setVoiceRefName] = useState<string | null>(null);
   const [voiceRefUploading, setVoiceRefUploading] = useState(false);
   const [language, setLanguage] = useState("Indonesian");
-  const [whisperQuality, setWhisperQuality] = useState<"tiny" | "base" | "small" | "medium">("base");
+  const [whisperQuality, setWhisperQuality] = useState<"tiny" | "base" | "small" | "medium">("medium");
   const [ttsModel, setTtsModel] = useState<string>("higgs-tts-q4");
   const [bgmPath, setBgmPath] = useState<string | null>(null);
   const [bgmName, setBgmName] = useState<string | null>(null);
@@ -353,7 +375,7 @@ export function NewJob() {
               type="number"
               step="0.1"
               value={stretch ?? ""}
-              onChange={(e) => setStretch(e.target.value === "" ? undefined : Number(e.target.value))}
+              onChange={(e) => setStretch(parseNum(e.target.value))}
               placeholder="kosong = default"
               className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white placeholder:text-[#71717a] focus:border-[#B6FF3B]/40 focus:outline-none"
             />
@@ -364,11 +386,37 @@ export function NewJob() {
               type="number"
               step="0.05"
               value={hzoom ?? ""}
-              onChange={(e) => setHzoom(e.target.value === "" ? undefined : Number(e.target.value))}
+              onChange={(e) => setHzoom(parseNum(e.target.value))}
               placeholder="1.15"
               className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white placeholder:text-[#71717a] focus:border-[#B6FF3B]/40 focus:outline-none"
             />
           </label>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Preview frame 9:16</span>
+            <div className="flex items-end gap-2">
+              <input
+                type="number"
+                min={0}
+                value={previewAtSec ?? ""}
+                onChange={(e) => setPreviewAtSec(parseNum(e.target.value))}
+                placeholder="12"
+                title="Detik"
+                className="w-[80px] rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white placeholder:text-[#71717a] focus:border-[#B6FF3B]/40 focus:outline-none"
+              />
+              <button
+                onClick={handlePreview}
+                disabled={previewLoading || !videoPath}
+                className="rounded-xl border border-[#B6FF3B]/40 bg-[#B6FF3B]/10 px-4 py-2.5 text-sm font-bold text-white hover:bg-[#B6FF3B]/20 disabled:opacity-50 transition-colors"
+              >
+                {previewLoading ? "..." : "Preview"}
+              </button>
+            </div>
+            {previewError && <p className="text-xs text-red-400">{previewError}</p>}
+            {previewImg && (
+              <img src={previewImg} alt="Preview frame" className="mt-1 h-[288px] w-[162px] rounded-lg border border-[#27272A] object-cover" />
+            )}
+          </div>
 
           <label className="space-y-1.5">
             <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Bahasa (TTS + Caption)</span>
@@ -408,9 +456,9 @@ export function NewJob() {
               className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white focus:border-[#B6FF3B]/40 focus:outline-none"
             >
               <option value="tiny">Tiny — tercepat, akurasi rendah</option>
-              <option value="base">Base — seimbang (default)</option>
+              <option value="base">Base — seimbang</option>
               <option value="small">Small — lebih akurat</option>
-              <option value="medium">Medium — paling akurat</option>
+              <option value="medium">Medium — paling akurat (default)</option>
             </select>
             <span className="text-xs text-[#71717a]">Ukuran model & kecepatan transcription</span>
           </label>

@@ -90,9 +90,12 @@ async function run(options: Args): Promise<void> {
   const server = await startServer();
   try {
     const executablePath = process.env.TSCAPS_CHROME_PATH || findBundledChrome();
-    const browser = await chromium.launch({ executablePath, headless: true });
-    try {
-      const context = await browser.newContext();
+    // Profil persisten (volume mount) agar cache model whisper (~1 GB) tidak
+    // dibangun ulang dari nol setiap run. Tanpa ini tiap caption = download +
+    // tulis disk raksasa + QuotaExceededError berulang.
+    const userDataDir = process.env.CHROME_USER_DATA_DIR || '/tmp/m2s-chrome-profile';
+    await mkdir(userDataDir, { recursive: true });
+    const context = await chromium.launchPersistentContext(userDataDir, { executablePath, headless: true });
       // Transfer hasil via binding per-chunk (base64) langsung ke file output.
       // Tidak lewat pipeline download browser: rapuh saat disk sistem (C:) penuh.
       let fd: number | null = null;
@@ -117,7 +120,7 @@ async function run(options: Args): Promise<void> {
       const url = `${resolveUrl(server)}template.html` +
         `?width=${options.width}&height=${options.height}&output=${encodeURIComponent(path.basename(output))}` +
         (options.language ? `&language=${encodeURIComponent(options.language)}` : '') +
-        (options.whisperQuality ? `&whisper_quality=${encodeURIComponent(options.whisperQuality)}` : '');
+        `&whisper_quality=${encodeURIComponent(options.whisperQuality || 'medium')}`;
       console.log(`[tscaps-template-cli] Opening ${url}`);
       try {
         await page.goto(url, { waitUntil: 'networkidle', timeout: 300_000 });
@@ -126,9 +129,7 @@ async function run(options: Args): Promise<void> {
         if (fd !== null) { try { fs.closeSync(fd); } catch {} fd = null; }
       }
       console.log(`[tscaps-template-cli] Wrote ${output} (${received} bytes)`);
-    } finally {
-      await browser.close();
-    }
+      await context.close();
   } finally {
     await server.close();
   }
@@ -137,7 +138,16 @@ async function run(options: Args): Promise<void> {
 async function startServer(): Promise<ViteDevServer> {
   const server = await createServer({
     root: EXAMPLES_ROOT,
-    server: { host: '127.0.0.1', port: 0 },
+    server: {
+      host: '127.0.0.1',
+      port: 0,
+      // COOP+COEP agar crossOriginIsolated=true -> onnxruntime WASM
+      // boleh pakai multi-thread (bukan 1 core).
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'credentialless',
+      },
+    },
   });
   await server.listen();
   return server;
@@ -176,6 +186,6 @@ function parseArgs(argv: string[]): Args {
     width: Number(values.get('width') || 1080),
     height: Number(values.get('height') || 1920),
     language: values.get('language') || undefined,
-    whisperQuality: (values.get('whisper-quality') || undefined) as Args['whisperQuality'],
+    whisperQuality: ((values.get('whisper-quality') || process.env.WHISPER_QUALITY || 'medium') as Args['whisperQuality']),
   };
 }
