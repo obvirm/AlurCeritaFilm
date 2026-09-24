@@ -123,7 +123,8 @@ export async function analyzeChunkWithR9Video(
   chunkEndSec: number,
   modelName: string = "ag/gemini-3.6-flash-high",
   transcript?: string,
-  previousContext?: string
+  previousContext?: string,
+  isFirstChunk: boolean = true
 ): Promise<VlmResponse> {
   const chunkDuration = chunkEndSec - chunkStartSec;
   if (chunkDuration <= 0) return { scenes: [] };
@@ -148,6 +149,7 @@ Tugas:
 2. Setiap scene idealnya 3-8 detik.
 3. description harus menyebut aksi visual konkret yang terlihat di video.
 4. narration_text harus menjadi naskah voice-over final sesuai persona system instruction.
+${isFirstChunk ? `7. Scene pertama video (klip ini mulai dari detik 0) BOLEH dibuka dengan hook premis langsung.` : `7. Klip ini BUKAN awal video — JANGAN buka dengan hook/pertanyaan/pembuka. Langsung lanjutkan kronologi dari konteks sebelumnya.`}
 5. start_sec dan end_sec adalah detik GLOBAL dari awal video penuh (bukan offset klip) - hitung dari penanda waktu klip + ${chunkStartSec}.
 6. Untuk SETIAP scene, perkirakan subject_x_pct: posisi horizontal PUSAT karakter/tokoh utama dalam frame, angka 0-100 (0=tepi kiri, 100=tepi kanan, 50=tengah). Ikuti tokoh yang paling menonjol/penting di scene itu. Jika tidak ada tokoh yang jelas, pakai 50.
 ${previousContextBlock}${transcriptContext}

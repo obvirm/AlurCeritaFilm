@@ -65,7 +65,7 @@ export async function runAnalysisPipeline(options: PipelineOptions) {
 
     console.log("       Chunk " + cs + "s-" + ce + "s | MP4 audio+visual via OpenAI Compatible");
 
-    const r = await analyzeChunkWithR9Video(videoPath, cs, ce, actualModel, chunkTranscript, previousNarration);
+    const r = await analyzeChunkWithR9Video(videoPath, cs, ce, actualModel, chunkTranscript, previousNarration, cs === 0);
 
     if (r.scenes.length > 0) {
       const scenesWithGlobalIds = r.scenes.map((scene, index) => ({

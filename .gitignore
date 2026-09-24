@@ -17,7 +17,6 @@ whisper/models/
 *.bin
 models/
 sandbox/
-tts/
 browser/
 
 # Secrets — JANGAN pernah commit .env (berisi GEMINI_API_KEY dll)
