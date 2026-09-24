@@ -790,8 +790,8 @@ const server = http.createServer(async (req, res) => {
         status: job.status,
         stage: job.stage,
         error: job.error,
-        createdAt: job.created_at,
-        finishedAt: job.finished_at,
+        createdAt: job.createdAt,
+        finishedAt: job.finishedAt,
         artifacts,
       },
     }));
@@ -805,8 +805,8 @@ const server = http.createServer(async (req, res) => {
       id: j.id,
       status: j.status,
       stage: j.stage,
-      createdAt: j.created_at,
-      finishedAt: j.finished_at,
+      createdAt: j.createdAt,
+      finishedAt: j.finishedAt,
       artifacts: dbGetJobArtifacts(j.id).map((a) => a.name),
     }));
     res.writeHead(200, { "content-type": "application/json" });

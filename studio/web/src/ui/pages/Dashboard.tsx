@@ -4,6 +4,23 @@ import { getJobs, type JobsListItem } from "@/app/api/client";
 import { StatusBadge } from "@/ui/components/StatusBadge";
 import { Clock, FileVideo, AlertCircle, Loader2, Plus } from "lucide-react";
 
+function fmtDate(v?: string | null): string {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
+function durStr(start?: string | null, end?: string | null): string {
+  if (!start || !end) return "";
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "";
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  if (h > 0) return `${h}j ${m}m`;
+  if (m > 0) return `${m}m ${ss}dtk`;
+  return `${ss}dtk`;
+}
+
 export function Dashboard() {
   const [jobs, setJobs] = useState<JobsListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +118,8 @@ export function Dashboard() {
                   <span className="font-mono text-xs text-[#a1a1aa] truncate">{j.id}</span>
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-[#71717a]">
-                  <Clock className="h-3 w-3" /> {new Date(j.createdAt).toLocaleString()}
+                  <Clock className="h-3 w-3" /> {fmtDate(j.createdAt)}
+                  {durStr(j.createdAt, j.finishedAt) ? <span>· {durStr(j.createdAt, j.finishedAt)}</span> : null}
                   {j.artifacts.length ? <span className="truncate">· {j.artifacts.slice(0, 2).join(" · ")}</span> : null}
                 </div>
               </div>

@@ -7,6 +7,23 @@ import { ArtifactList } from "@/ui/components/ArtifactList";
 import { StatusBadge, StageBadge } from "@/ui/components/StatusBadge";
 import { AlertCircle, ArrowLeft, Ban, Loader2, RefreshCw, Download, Sparkles } from "lucide-react";
 
+function fmtDate(v?: string | null): string {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
+function durStr(start?: string | null, end?: string | null): string {
+  if (!start || !end) return "";
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "";
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  if (h > 0) return `${h}j ${m}m`;
+  if (m > 0) return `${m}m ${ss}dtk`;
+  return `${ss}dtk`;
+}
+
 export function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const [job, setJob] = useState<Job | null>(null);
@@ -149,7 +166,8 @@ export function JobDetail() {
               <h1 className="truncate font-mono text-sm font-black text-white">{job.id}</h1>
             </div>
             <p className="mt-1 text-xs text-[#a1a1aa]">
-              Dibuat {new Date(job.createdAt).toLocaleString()} {job.finishedAt ? `· Selesai ${new Date(job.finishedAt).toLocaleString()}` : ""}{" "}
+              Dibuat {fmtDate(job.createdAt)} {job.finishedAt ? `· Selesai ${fmtDate(job.finishedAt)}` : ""}{" "}
+              {durStr(job.createdAt, job.finishedAt) ? `· Durasi ${durStr(job.createdAt, job.finishedAt)}` : ""}{" "}
               <span className={wsConnected ? "text-[#B6FF3B]" : "text-[#71717a]"}>· {wsConnected ? "WS live" : "WS offline (polling)"}</span>
             </p>
           </div>

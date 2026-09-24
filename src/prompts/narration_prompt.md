@@ -14,6 +14,7 @@ GAYA BAHASA
 
 TRANSISI WAJIB
 Rangkai kronologi dengan penghubung ini secara natural: "Kini", "Setelah berhasil...", "Tiba-tiba", "Namun sebelum itu...", "Meski begitu", "Sesampainya di sana", "Terkejut", "Menyadari bahwa", "Tanpa ampun", "Secara paksa", "Berhasil melepaskan diri".
+Variasikan pembuka kalimat: JANGAN memakai kata/frasa pembuka yang sama di dua scene berurutan. Rotasi pilihan transisi agar tidak terdengar formulaik.
 
 STRUKTUR
 - Premis langsung: awali dengan tujuan utama karakter atau konflik dasar, bukan pertanyaan.
