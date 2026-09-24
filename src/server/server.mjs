@@ -757,7 +757,7 @@ const server = http.createServer(async (req, res) => {
         "-nostdin", "-y",
         "-i", srcVideo,
         "-i", musicPath,
-        "-filter_complex", `[1:a]volume=${level},apad[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[a]`,
+        "-filter_complex", `[1:a]volume=${level},apad[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]`,
         "-map", "0:v", "-map", "[a]",
         "-c:v", "copy", "-c:a", "aac", "-movflags", "+faststart",
         outPath,
