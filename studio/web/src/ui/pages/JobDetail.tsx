@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { cancelJob, connectJobWS, fileUrl, getJob, getJobLog, type Job, type JobLogEntry } from "@/app/api/client";
+import { cancelJob, connectJobWS, fileUrl, getJob, getJobLog, addBgm, uploadVideo, type Job, type JobLogEntry } from "@/app/api/client";
 import { LogViewer } from "@/ui/components/LogViewer";
 import { VideoPlayer } from "@/ui/components/VideoPlayer";
 import { ArtifactList } from "@/ui/components/ArtifactList";
@@ -31,6 +31,39 @@ export function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [bgmName, setBgmName] = useState<string | null>(null);
+  const [bgmPath, setBgmPath] = useState<string | null>(null);
+  const [bgmLevel, setBgmLevel] = useState(0.2);
+  const [bgmBusy, setBgmBusy] = useState(false);
+  const [bgmError, setBgmError] = useState<string | null>(null);
+  const handleBgmFile = async (f: File | undefined) => {
+    if (!f) return;
+    setBgmBusy(true);
+    setBgmError(null);
+    try {
+      const r = await uploadVideo(f);
+      setBgmPath(r.videoPath);
+      setBgmName(r.name || f.name);
+    } catch (e) {
+      setBgmError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBgmBusy(false);
+    }
+  };
+  const handleBgmMix = async () => {
+    if (!id || !bgmPath) { setBgmError("Upload file musik dulu"); return; }
+    setBgmBusy(true);
+    setBgmError(null);
+    try {
+      await addBgm({ jobId: id, musicPath: bgmPath, level: bgmLevel });
+      const j = await getJob(id);
+      setJob(j);
+    } catch (e) {
+      setBgmError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBgmBusy(false);
+    }
+  };
   const logsRef = useRef<JobLogEntry[]>([]);
 
   const fetchAll = async () => {
@@ -222,6 +255,33 @@ export function JobDetail() {
             >
               <Download className="h-4 w-4" /> Download SRT {srtArtifact.name}
             </a>
+          )}
+
+          {job.status !== "running" && (
+            <div className="rounded-[20px] border border-[#27272A] bg-[#0A0A0A] p-4">
+              <h2 className="mb-2 text-sm font-black text-white">Musik latar (BGM)</h2>
+              <label className="block cursor-pointer rounded-xl border border-dashed border-[#27272A] bg-[#000000] px-3 py-2.5 text-center text-xs text-[#a1a1aa] hover:border-[#B6FF3B]/40">
+                {bgmName ? bgmName : "Upload mp3/wav/flac..."}
+                <input type="file" accept="audio/*,.flac" className="hidden" onChange={(e) => handleBgmFile(e.target.files?.[0])} />
+              </label>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-[#71717a]">Level</span>
+                <input
+                  type="number" min={0} max={1} step={0.05} value={bgmLevel}
+                  onChange={(e) => setBgmLevel(Math.min(1, Math.max(0, Number(e.target.value) || 0)))}
+                  className="w-[80px] rounded-lg border border-[#27272A] bg-[#000000] px-2 py-1.5 text-xs text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+                />
+                <button
+                  onClick={handleBgmMix}
+                  disabled={bgmBusy || !bgmPath}
+                  className="rounded-lg border border-[#B6FF3B]/40 bg-[#B6FF3B]/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#B6FF3B]/20 disabled:opacity-50 transition-colors"
+                >
+                  {bgmBusy ? "..." : "Mix ke video"}
+                </button>
+              </div>
+              {bgmError && <p className="mt-1 text-xs text-red-400">{bgmError}</p>}
+              <p className="mt-1 text-xs text-[#71717a]">Hasil: <code>final_with_bgm.mp4</code> di artifacts.</p>
+            </div>
           )}
         </div>
 

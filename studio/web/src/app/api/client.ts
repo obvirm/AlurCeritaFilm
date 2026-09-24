@@ -130,6 +130,16 @@ export async function previewFrame(p: { videoPath: string; stretch?: number; hzo
   return { image: j.image, atSec: j.atSec };
 }
 
+export async function addBgm(p: { jobId: string; musicPath: string; level?: number }) {
+  const j = await jsonFetch<{ ok: boolean; name?: string; error?: string }>(`${BASE}/api/add-bgm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(p),
+  });
+  if (!j.ok || !j.name) throw new Error(j.error || "add-bgm gagal");
+  return { name: j.name };
+}
+
 export const getJobs = async () => (await jsonFetch<{ ok: boolean; jobs: JobsListItem[] }>(`${BASE}/api/jobs`)).jobs || [];
 export const getJob = async (id: string) => (await jsonFetch<{ ok: boolean; job: Job }>(`${BASE}/api/jobs/${encodeURIComponent(id)}`)).job;
 export const getJobLog = async (id: string) => (await jsonFetch<{ ok: boolean; log: JobLogEntry[] }>(`${BASE}/api/jobs/${encodeURIComponent(id)}/log`)).log || [];

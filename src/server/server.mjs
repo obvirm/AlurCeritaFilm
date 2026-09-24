@@ -11,6 +11,7 @@
  *   POST /api/upload?name=<file.mp4>   raw body -> data/uploads/<name>
     *   POST /api/run                      { videoPath, model, stretch, hzoom, caption, ttsModel } -> { jobId }
   *   POST /api/preview-frame            { videoPath, stretch?, hzoom?, atSec? } -> { image(dataURL) }
+  *   POST /api/add-bgm                  { jobId, musicPath, level? } -> { ok, name }
  *   GET  /api/jobs/:id                 status + artifacts job
  *   GET  /api/outputs                  daftar job terakhir
  *   WS   /ws?job=<jobId>               stream log live
@@ -712,6 +713,63 @@ const server = http.createServer(async (req, res) => {
         pushStatus(job, "error");
       }
     });
+    return;
+  }
+
+  // --- API: tambah/ganti BGM ke video jadi (tanpa AI, ffmpeg mix) -----------
+  // Body: { jobId, musicPath, level? } -> { ok, name }
+  // musicPath = hasil /api/upload (mis. /app/data/uploads/lagu.mp3).
+  if (pathname === "/api/add-bgm" && req.method === "POST") {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    let input;
+    try { input = JSON.parse(body); } catch { input = {}; }
+    const job = input.jobId ? dbGetJob(String(input.jobId)) : null;
+    const musicPath = input.musicPath;
+    if (!job) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "job tidak ditemukan" }));
+      return;
+    }
+    if (job.status === "running") {
+      res.writeHead(409, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "tunggu job selesai dulu" }));
+      return;
+    }
+    if (!musicPath || !fs.existsSync(musicPath)) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "musicPath tidak valid (upload dulu via /api/upload)" }));
+      return;
+    }
+    const level = Math.min(1, Math.max(0, Number(input.level) > 0 ? Number(input.level) : 0.2));
+    const arts = dbGetJobArtifacts(job.id);
+    const pick = (re) => arts.map((a) => a.path).find((p) => re.test(path.basename(p)) && fs.existsSync(p));
+    const srcVideo = pick(/^final_captioned_.*\.mp4$/) || pick(/^final_short\.mp4$/) || pick(/\.mp4$/);
+    if (!srcVideo) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "job ini tidak punya video" }));
+      return;
+    }
+    const outName = "final_with_bgm.mp4";
+    const outPath = path.join(job.dir, outName);
+    try {
+      execFileSync("ffmpeg", [
+        "-nostdin", "-y",
+        "-i", srcVideo,
+        "-i", musicPath,
+        "-filter_complex", `[1:a]volume=${level},apad[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[a]`,
+        "-map", "0:v", "-map", "[a]",
+        "-c:v", "copy", "-c:a", "aac", "-movflags", "+faststart",
+        outPath,
+      ], { stdio: "pipe" });
+      dbAddArtifact(job.id, { name: outName, path: outPath, kind: "video" });
+      pushLog(job, `[bgm] ${path.basename(srcVideo)} + ${path.basename(musicPath)} (level ${level}) -> ${outName}`);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, name: outName }));
+    } catch (e) {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: String(e.message || e).slice(0, 300) }));
+    }
     return;
   }
 
