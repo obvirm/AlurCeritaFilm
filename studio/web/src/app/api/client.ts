@@ -104,6 +104,7 @@ export interface RunPayload {
   overlayHtml?: string;
   overlayCss?: string;
   voiceRef?: string; // base64 audio WAV for voice cloning
+  ttsModel?: string; // TTS model id (default: env TTS_MODEL atau higgs-tts-q4)
   language?: string; // TTS/Whisper language (default: "Indonesian")
   whisperQuality?: "tiny" | "base" | "small" | "medium";
 }

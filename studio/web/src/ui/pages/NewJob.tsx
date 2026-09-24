@@ -41,6 +41,7 @@ export function NewJob() {
   const [voiceRefUploading, setVoiceRefUploading] = useState(false);
   const [language, setLanguage] = useState("Indonesian");
   const [whisperQuality, setWhisperQuality] = useState<"tiny" | "base" | "small" | "medium">("base");
+  const [ttsModel, setTtsModel] = useState<string>("higgs-tts-q4");
   const [bgmPath, setBgmPath] = useState<string | null>(null);
   const [bgmName, setBgmName] = useState<string | null>(null);
   const [bgmUploading, setBgmUploading] = useState(false);
@@ -192,6 +193,7 @@ export function NewJob() {
         language: language || undefined,
         bgm: bgmPath || undefined,
         whisperQuality: whisperQuality || undefined,
+        ttsModel: ttsModel.trim() || undefined,
       });
       navigate(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (e) {
@@ -411,6 +413,18 @@ export function NewJob() {
               <option value="medium">Medium — paling akurat</option>
             </select>
             <span className="text-xs text-[#71717a]">Ukuran model & kecepatan transcription</span>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">TTS Model</span>
+            <select
+              value={ttsModel}
+              onChange={(e) => setTtsModel(e.target.value)}
+              className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white focus:border-[#B6FF3B]/40 focus:outline-none"
+            >
+              <option value="higgs-tts-q4">higgs-tts-q4 (default)</option>
+              <option value="omnivoice">omnivoice</option>
+            </select>
+            <span className="text-xs text-[#71717a]">Harus terdaftar di server.json audiocpp</span>
           </label>
           <label className="space-y-1.5">
             <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Lead (s)</span>

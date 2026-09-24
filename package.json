@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0-only",
   "type": "module",
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.28",

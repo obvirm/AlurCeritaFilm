@@ -9,7 +9,7 @@
  *
  * Endpoints:
  *   POST /api/upload?name=<file.mp4>   raw body -> data/uploads/<name>
-   *   POST /api/run                      { videoPath, model, stretch, hzoom, caption } -> { jobId }
+    *   POST /api/run                      { videoPath, model, stretch, hzoom, caption, ttsModel } -> { jobId }
  *   GET  /api/jobs/:id                 status + artifacts job
  *   GET  /api/outputs                  daftar job terakhir
  *   WS   /ws?job=<jobId>               stream log live
@@ -400,6 +400,10 @@ async function runPipeline(job, input) {
   // Voice cloning support
   const voiceRef = input.voiceRef || process.env.AUDIOCPP_VOICE_REF || path.join(ROOT, "src", "patrick_ref_voice.wav");
   if (voiceRef) httpTtsArgs.push("--voice-ref", voiceRef);
+  // Model TTS: API/UI > env > default Higgs. Harus terdaftar di server.json audiocpp.
+  const ttsModel = input.ttsModel || process.env.TTS_MODEL || "higgs-tts-q4";
+  httpTtsArgs.push("--model", ttsModel);
+  pushLog(job, `[tts] model -> ${ttsModel}`);
   await run(job, `TTS HTTP (Higgs Audio v3)`, process.execPath, [...httpTtsArgs]);
   pushLog(job, `[tts] selesai -> ${rel(fullNarrationWav)}`);
 
@@ -638,6 +642,7 @@ const server = http.createServer(async (req, res) => {
       overlayHtml: input.overlayHtml ? String(input.overlayHtml).slice(0, 200000) : undefined,
       overlayCss: input.overlayCss ? String(input.overlayCss).slice(0, 200000) : undefined,
        voiceRef: input.voiceRef ? String(input.voiceRef) : undefined,
+      ttsModel: typeof input.ttsModel === "string" && input.ttsModel.trim() ? input.ttsModel.trim() : undefined,
       language: (input.language || process.env.LANGUAGE || "Indonesian").toString(),
       captionOnly: input.captionOnly === true,
     };
