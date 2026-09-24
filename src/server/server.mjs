@@ -316,6 +316,43 @@ async function runPipeline(job, input) {
 
   const rel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
 
+  // 0. CAPTION-ONLY (bypass AI: tanpa analysis/TTS/render — anti rate limit) --
+  // videoPath = video jadi yang mau di-caption (+acters SRT whisper).
+  if (input.captionOnly) {
+    const onlyTpl = input.template || "loki";
+    const onlyLang = input.language || process.env.LANGUAGE || "Indonesian";
+    const onlyOut = path.join(job.dir, `final_captioned_${onlyTpl}.mp4`);
+    const onlySrt = path.join(job.dir, `final_captioned_${onlyTpl}.srt`);
+    pushStatus(job, "running", "caption");
+    await run(job, `CAPTION TSCAPS (${onlyTpl})`, process.execPath, [
+      CFG.tsxCli, "src/caption/render.ts",
+      "--template", onlyTpl,
+      "--video", videoPath,
+      "--output", onlyOut,
+      "--srt-out", onlySrt,
+      "--width", "1080",
+      "--height", "1920",
+      "--language", onlyLang,
+      ...(input.whisperQuality ? ["--whisper-quality", input.whisperQuality] : []),
+    ], {
+      env: {
+        TSCAPS_CHROME_PATH: CFG.tscapsChrome,
+        PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath,
+        TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates,
+        TSCAPS_WHISPER_LANGUAGE: onlyLang,
+      },
+    });
+    pushLog(job, `[caption] selesai -> ${rel(onlyOut)}`);
+    dbAddArtifact(job.id, { name: rel(onlyOut), path: onlyOut, kind: "video" });
+    if (fs.existsSync(onlySrt)) {
+      pushLog(job, `[caption] srt -> ${rel(onlySrt)}`);
+      dbAddArtifact(job.id, { name: rel(onlySrt), path: onlySrt, kind: "text" });
+    }
+    pushStatus(job, "done");
+    pushLog(job, `\n✅ Caption-only selesai.`);
+    return;
+  }
+
   // 1.5 CONDENSE (opsional) ---------------------------------------------------
   // Satu short FULL-SPOILER berdurasi target dari video panjang: LLM memilih
   // subset scene kunci (awal->tengah->klimaks->akhir) dan memadatkan narasinya
@@ -458,12 +495,14 @@ async function runPipeline(job, input) {
       pushStatus(job, "running", "caption");
       const capName = `final_captioned_${tpl}.mp4`;
       const finalCaptioned = path.join(partDir, capName);
+      const finalSrt = path.join(partDir, `final_captioned_${tpl}.srt`);
       try {
         await run(job, `${partTag}CAPTION TSCAPS (${tpl})`, process.execPath, [
           CFG.tsxCli, "src/caption/render.ts",
           "--template", tpl,
           "--video", captionInput,
           "--output", finalCaptioned,
+          "--srt-out", finalSrt,
           "--width", "1080",
           "--height", "1920",
           "--language", input.language || process.env.LANGUAGE || "Indonesian",
@@ -478,6 +517,10 @@ async function runPipeline(job, input) {
         });
         pushLog(job, `${partTag}[caption] selesai -> ${rel(finalCaptioned)}`);
         dbAddArtifact(job.id, { name: rel(finalCaptioned), path: finalCaptioned, kind: "video" });
+        if (fs.existsSync(finalSrt)) {
+          pushLog(job, `${partTag}[caption] srt -> ${rel(finalSrt)}`);
+          dbAddArtifact(job.id, { name: rel(finalSrt), path: finalSrt, kind: "text" });
+        }
       } catch (e) {
         pushLog(job, `${partTag}[caption] gagal (video tetap tersedia tanpa caption): ${e.message}`, "warn");
       }
@@ -582,6 +625,7 @@ const server = http.createServer(async (req, res) => {
       hzoom: input.hzoom !== undefined ? Number(input.hzoom) : undefined,
       caption: input.caption !== false,
       template: typeof input.template === "string" ? input.template : "loki",
+      whisperQuality: ["tiny", "base", "small", "medium"].includes(input.whisperQuality) ? input.whisperQuality : undefined,
       lead: input.lead !== undefined ? Number(input.lead) : 5,
       tail: input.tail !== undefined ? Number(input.tail) : 5,
       outputMode: input.outputMode === "auto" || input.outputMode === "manual" ? input.outputMode : "one",
@@ -595,6 +639,7 @@ const server = http.createServer(async (req, res) => {
       overlayCss: input.overlayCss ? String(input.overlayCss).slice(0, 200000) : undefined,
        voiceRef: input.voiceRef ? String(input.voiceRef) : undefined,
       language: (input.language || process.env.LANGUAGE || "Indonesian").toString(),
+      captionOnly: input.captionOnly === true,
     };
     const job = createJob(videoPath, sanitized);
     await fsp.mkdir(job.dir, { recursive: true });

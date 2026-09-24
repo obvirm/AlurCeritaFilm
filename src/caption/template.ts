@@ -13,6 +13,9 @@ import {
   BoundaryScoreLimitByCharsSegmentSplitter,
   FixedTailLineSplitter,
   SvgFilterDefinitionsParser,
+  SrtSubtitleFileSerializer,
+  WhisperTranscriber,
+  MediaBunnyAudioDecoder,
   SvgFilterScope,
   SvgFilterBundle,
   type SvgFilterRenderContext,
@@ -32,6 +35,7 @@ declare global {
   interface Window {
     renderMovie2short(): Promise<void>;
     m2sSaveChunk(payload: { index: number; b64: string; last: boolean }): Promise<void>;
+    m2sSaveSrt(srt: string): Promise<void>;
   }
 }
 
@@ -195,9 +199,12 @@ window.renderMovie2short = async () => {
 
   // Default transcriber is WhisperTranscriber with MediaBunnyAudioDecoder.
   // It listens to the audio from final_short.mp4 and produces word-level timing.
-  const whisperModel = (params.get('whisper_quality') || 'base') as 'tiny' | 'base' | 'small' | 'medium';
+  const whisperModel = (params.get('whisper_quality') || 'medium') as 'tiny' | 'base' | 'small' | 'medium';
   const builder = new RenderPipelineBuilder()
     .withInputVideo(inputBlob)
+    // Model whisper HANYA dibaca di constructor transcriber (default 'base').
+    // withTranscriberOptions({model}) diabaikan engine 0.4.0 — inject eksplisit.
+    .withTranscriber(new WhisperTranscriber(new MediaBunnyAudioDecoder(), { model: whisperModel }))
     .withTranscriberOptions({ language: params.get('language') || 'id', model: whisperModel });
   if (segmentSplitter) builder.withSegmentSplitter(segmentSplitter);
   if (line.type === 'fixed-tail') {
@@ -226,6 +233,18 @@ window.renderMovie2short = async () => {
   const pipeline = builder.build();
   const result = await pipeline.run((event) => console.log(describe(event)));
   if (result.blob === null) throw new Error('tscaps returned no output blob');
+  // Simpan SRT dari Document (whisper transcript + timing) — gagal simpan
+  // SRT tidak boleh menggagalkan video.
+  try {
+    const doc = pipeline.getDocument();
+    if (doc) {
+      const srt = new SrtSubtitleFileSerializer().serialize({ document: doc, granularity: 'segment' });
+      await window.m2sSaveSrt(srt);
+      console.log(`[tscaps-template] sent srt (${srt.length} chars)`);
+    }
+  } catch (e) {
+    console.log(`[tscaps-template] srt skip: ${e instanceof Error ? e.message : String(e)}`);
+  }
   await sendBlobChunked(result.blob);
 };
 

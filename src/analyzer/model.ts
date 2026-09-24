@@ -168,10 +168,17 @@ Balas JSON SAJA (format contoh - JANGAN tiru teksnya):
       })
     });
 
-    if (!response.ok) return { scenes: [] };
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      console.error(`[VLM] chunk ${chunkStartSec}s-${chunkEndSec}s HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+      return { scenes: [] };
+    }
     const data = await response.json() as any;
     const rawText = data.choices?.[0]?.message?.content || "";
-    if (!rawText) return { scenes: [] };
+    if (!rawText) {
+      console.error(`[VLM] chunk ${chunkStartSec}s-${chunkEndSec}s: respons kosong`);
+      return { scenes: [] };
+    }
 
     const parsed = parseVlmJson(rawText);
     if (!parsed.scenes?.length) return { scenes: [] };

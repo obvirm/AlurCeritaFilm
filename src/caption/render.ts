@@ -27,6 +27,7 @@ interface Args {
   template: string;
   video: string;
   output: string;
+  srtOut?: string;
   width: number;
   height: number;
   language?: string;
@@ -80,6 +81,10 @@ async function run(options: Args): Promise<void> {
 
   const output = path.resolve(options.output);
   await mkdir(path.dirname(output), { recursive: true });
+  // SRT pendamping: eksplisit via --srt-out, default ganti ekstensi output.
+  const srtOut = options.srtOut
+    ? path.resolve(options.srtOut)
+    : output.replace(/\.mp4$/i, '.srt');
 
   // 4. vite + chromium
   const server = await startServer();
@@ -101,6 +106,10 @@ async function run(options: Args): Promise<void> {
           fs.closeSync(fd);
           fd = null;
         }
+      });
+      await context.exposeFunction('m2sSaveSrt', async (srt: string) => {
+        fs.writeFileSync(srtOut, srt, 'utf8');
+        console.log(`[tscaps-template-cli] Wrote srt ${srtOut} (${srt.length} chars)`);
       });
       const page = await context.newPage();
       page.on('console', (msg) => console.log(`[page ${msg.type()}] ${msg.text()}`));
@@ -163,6 +172,7 @@ function parseArgs(argv: string[]): Args {
     template: required('template'),
     video: required('video'),
     output: required('output'),
+    srtOut: values.get('srt-out') || undefined,
     width: Number(values.get('width') || 1080),
     height: Number(values.get('height') || 1920),
     language: values.get('language') || undefined,
