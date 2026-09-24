@@ -872,6 +872,27 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- API: daftar output (job selesai + video final) --------------------------
+  if (pathname === "/api/outputs" && req.method === "GET") {
+    const rows = dbListJobs(50);
+    const list = [];
+    for (const j of rows) {
+      const arts = dbGetJobArtifacts(j.id).filter((a) => a.kind === "video");
+      if (!arts.length) continue;
+      list.push({
+        id: j.id,
+        status: j.status,
+        createdAt: j.createdAt,
+        finishedAt: j.finishedAt,
+        videos: arts.map((a) => a.name),
+      });
+      if (list.length >= 20) break;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, outputs: list }));
+    return;
+  }
+
   // --- API: log job ------------------------------------------------------------
   const logMatch = pathname.match(/^\/api\/jobs\/([\w-]+)\/log$/);
   if (logMatch) {
