@@ -26,6 +26,8 @@ export function NewJob() {
   const [targetMinutes, setTargetMinutes] = useState(0);
   const [stretch, setStretch] = useState<number | undefined>(undefined);
   const [hzoom, setHzoom] = useState<number | undefined>(1.15);
+  const [speedMin, setSpeedMin] = useState<number | undefined>(0.5);
+  const [speedMax, setSpeedMax] = useState<number | undefined>(2);
   const parseNum = (v: string): number | undefined => {
     if (v === "") return undefined;
     const n = Number(v.replace(",", "."));
@@ -199,6 +201,8 @@ export function NewJob() {
         chunk: chunk ? 40 : false,
         stretch: stretch !== undefined && !Number.isNaN(stretch) ? stretch : undefined,
         hzoom: hzoom !== undefined && !Number.isNaN(hzoom) ? hzoom : undefined,
+        speedMin: speedMin !== undefined && !Number.isNaN(speedMin) ? speedMin : undefined,
+        speedMax: speedMax !== undefined && !Number.isNaN(speedMax) ? speedMax : undefined,
         caption,
         template,
         lead,
@@ -393,8 +397,7 @@ export function NewJob() {
           </label>
 
           <div className="space-y-1.5">
-            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Preview frame 9:16</span>
-            <div className="flex items-end gap-2">
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Preview frame 9:16</span>            <div className="flex items-end gap-2">
               <input
                 type="number"
                 min={0}
@@ -417,6 +420,28 @@ export function NewJob() {
               <img src={previewImg} alt="Preview frame" className="mt-1 h-[288px] w-[162px] rounded-lg border border-[#27272A] object-cover" />
             )}
           </div>
+
+          <label className="space-y-1.5">
+            <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Tempo min..max (ikut narasi)</span>
+            <div className="flex gap-2">
+              <input
+                type="number" step="0.1" min={0.1} max={8}
+                value={speedMin ?? ""}
+                onChange={(e) => setSpeedMin(parseNum(e.target.value))}
+                placeholder="0.5"
+                title="Batas lambat"
+                className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white placeholder:text-[#71717a] focus:border-[#B6FF3B]/40 focus:outline-none"
+              />
+              <input
+                type="number" step="0.5" min={1} max={8}
+                value={speedMax ?? ""}
+                onChange={(e) => setSpeedMax(parseNum(e.target.value))}
+                placeholder="2"
+                title="Batas cepat"
+                className="w-full rounded-xl border border-[#27272A] bg-[#000000] px-3 py-2.5 text-sm text-white placeholder:text-[#71717a] focus:border-[#B6FF3B]/40 focus:outline-none"
+              />
+            </div>
+          </label>
 
           <label className="space-y-1.5">
             <span className="text-xs font-bold tracking-wide text-[#a1a1aa]">Bahasa (TTS + Caption)</span>

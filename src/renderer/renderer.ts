@@ -23,7 +23,9 @@ export async function renderShortVideo(
   cameraPlanPath?: string,
   stretchRatio?: number,
   hZoomRatio?: number,
-  bgmPath?: string
+  bgmPath?: string,
+  speedMin: number = 0.5,
+  speedMax: number = 2
 ) {
   const absManifest = path.resolve(manifestPath);
   const absOutput = path.resolve(outputMp4Path);
@@ -101,19 +103,33 @@ export async function renderShortVideo(
     }
 
     // Narration is the master timeline: every visual clip has exactly the
-    // natural narration duration. Shorter clips are cut; longer narration
-    // gets a frozen last frame, never footage from the next scene.
+    // natural narration duration. Tempo mengikuti narasi (diperintah AI via
+    // durasi): speed = take/D clamp [speedMin, speedMax]. Di luar batas:
+    // kepanjangan dipotong, kependekan di-freeze frame terakhir.
     const sourceDuration = endSec - startSec;
     const duration = sceneDurations && sceneDurations[i] !== undefined
       ? Math.max(0.5, sceneDurations[i])
       : sourceDuration;
-    const extraVisualDuration = Math.max(0, duration - sourceDuration);
+    const ideal = sourceDuration / duration;
+    const speed = Math.min(speedMax, Math.max(speedMin, ideal));
+    let take: number;
+    let extraVisualDuration: number;
+    if (ideal > speedMax) {
+      take = duration * speedMax;
+      extraVisualDuration = 0;
+    } else if (ideal < speedMin) {
+      take = sourceDuration;
+      extraVisualDuration = Math.max(0, duration - sourceDuration / speedMin);
+    } else {
+      take = Math.min(sourceDuration, duration * speed);
+      extraVisualDuration = Math.max(0, duration - take / speed);
+    }
     // If narration is shorter, center the crop inside the annotated scene so
     // the main action is less likely to be lost by always taking its beginning.
-    const visualStart = duration < sourceDuration
-      ? startSec + (sourceDuration - duration) / 2
+    const visualStart = take < sourceDuration
+      ? startSec + (sourceDuration - take) / 2
       : startSec;
-    const visualInputDuration = Math.min(sourceDuration, duration);
+    const visualInputDuration = take;
     // Director: posisi overlay per scene (HANYA mode zoom — mode stretch tidak geser).
     // Prioritas: camera plan manual > subject_x_pct dari VLM > tengah.
     let overlayX = "(W-w)/2";
@@ -145,10 +161,12 @@ export async function renderShortVideo(
       }
     }
 
-    const sceneFilterComplex = (extraVisualDuration > 0.01
-      ? filterComplex.replace('[outv]', `,tpad=stop_mode=clone:stop_duration=${extraVisualDuration.toFixed(3)}[outv]`)
-      : filterComplex)
+    let suffix = '';
+    if (Math.abs(speed - 1) > 0.001) suffix += `,setpts=PTS/${speed.toFixed(4)}`;
+    if (extraVisualDuration > 0.01) suffix += `,tpad=stop_mode=clone:stop_duration=${extraVisualDuration.toFixed(3)}`;
+    const sceneFilterComplex = (suffix ? filterComplex.replace('[outv]', `${suffix}[outv]`) : filterComplex)
       .replace('overlay=x:y', `overlay=${overlayX}:${overlayY}`);
+    if (Math.abs(speed - 1) > 0.001) console.log(`       ${scene.id}: tempo ${speed.toFixed(2)}x (visual ${take.toFixed(1)}s -> narasi ${duration.toFixed(1)}s)`);
     const clipPath = path.join(tempDir, `scene_${String(i).padStart(4, '0')}.mp4`);
 
     const cmd = `ffmpeg -y -ss ${visualStart.toFixed(3)} -t ${visualInputDuration.toFixed(3)} -i "${actualVideoPath}" -filter_complex "${sceneFilterComplex}" -map "[outv]" -an -t ${duration.toFixed(3)} -c:v libx264 -preset fast -crf 23 "${clipPath}"`;

@@ -43,10 +43,20 @@ async function main() {
       },
       bgm: {
         type: 'string' // Optional BGM track (flac/mp3/wav) untuk di-mix dengan narasi
+      },
+      'speed-min': {
+        type: 'string' // Batas lambat tempo mengikuti narasi, default 0.5 (freeze di bawahnya)
+      },
+      'speed-max': {
+        type: 'string' // Batas cepat tempo mengikuti narasi, default 2 (potong di atasnya)
       }
     },
     allowPositionals: true
   });
+  const numOrUndef = (v: unknown): number | undefined => {
+    const n = typeof v === "string" ? Number(v.replace(",", ".")) : Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
 
   if (values['only-render']) {
     const manifestPath = path.resolve(values['only-render']);
@@ -112,7 +122,9 @@ async function main() {
       values['camera-plan'] ? path.resolve(values['camera-plan']) : undefined,
       values.stretch !== undefined ? Number(values.stretch) : undefined,
       values.hzoom !== undefined ? Number(values.hzoom) : undefined,
-      values.bgm ? path.resolve(values.bgm) : undefined
+      values.bgm ? path.resolve(values.bgm) : undefined,
+      numOrUndef(values['speed-min']),
+      numOrUndef(values['speed-max'])
     );
     return;
   }
@@ -153,7 +165,9 @@ async function main() {
       values['camera-plan'] ? path.resolve(values['camera-plan']) : undefined,
       values.stretch !== undefined ? Number(values.stretch) : undefined,
       values.hzoom !== undefined ? Number(values.hzoom) : undefined,
-      values.bgm ? path.resolve(values.bgm) : undefined
+      values.bgm ? path.resolve(values.bgm) : undefined,
+      numOrUndef(values['speed-min']),
+      numOrUndef(values['speed-max'])
     );
     console.log(`- Final Video:  ${outputMp4}`);
     console.log(`- Narration:    ${path.join(outputDir, 'narasi.txt')}`);

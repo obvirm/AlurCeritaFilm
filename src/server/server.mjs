@@ -473,6 +473,8 @@ async function runPipeline(job, input) {
     if (stretch !== undefined && stretch !== null) renderArgs.push("--stretch", String(stretch));
     if (hzoom !== undefined && hzoom !== null) renderArgs.push("--hzoom", String(hzoom));
     if (bgmPath) renderArgs.push("--bgm", bgmPath);
+    if (input.speedMin !== undefined && input.speedMin !== null) renderArgs.push("--speed-min", String(input.speedMin));
+    if (input.speedMax !== undefined && input.speedMax !== null) renderArgs.push("--speed-max", String(input.speedMax));
     await runNode(job, `${partTag}RENDER FFMPEG`, "src/index.ts", renderArgs);
     pushLog(job, `${partTag}[render] selesai -> ${rel(finalShort)}`);
     dbAddArtifact(job.id, { name: rel(finalShort), path: finalShort, kind: "video" });
@@ -691,6 +693,8 @@ const server = http.createServer(async (req, res) => {
         : true, // true = 40s chunks; false = full video
       stretch: input.stretch !== undefined ? Number(input.stretch) : undefined,
       hzoom: input.hzoom !== undefined ? Number(input.hzoom) : undefined,
+      speedMin: input.speedMin !== undefined && Number.isFinite(Number(String(input.speedMin).replace(",", "."))) ? Number(String(input.speedMin).replace(",", ".")) : undefined,
+      speedMax: input.speedMax !== undefined && Number.isFinite(Number(String(input.speedMax).replace(",", "."))) ? Number(String(input.speedMax).replace(",", ".")) : undefined,
       caption: input.caption !== false,
       template: typeof input.template === "string" ? input.template : "loki",
       whisperQuality: ["tiny", "base", "small", "medium"].includes(input.whisperQuality) ? input.whisperQuality : undefined,

@@ -90,6 +90,8 @@ export interface RunPayload {
   chunk?: boolean | number;
   stretch?: number;
   hzoom?: number;
+  speedMin?: number; // batas lambat tempo (default 0.5)
+  speedMax?: number; // batas cepat tempo (default 2)
   caption?: boolean;
   template?: string;
   lead?: number;
