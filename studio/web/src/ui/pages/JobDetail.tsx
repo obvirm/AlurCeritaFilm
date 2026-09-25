@@ -161,7 +161,9 @@ export function JobDetail() {
 
   if (!job || !id) return null;
 
-  const videoArtifacts = job.artifacts.filter((a) => a.kind === "video");
+  const videoArtifacts = job.artifacts.filter(
+    (a, i, arr) => a.kind === "video" && arr.findIndex((b) => b.name === a.name) === i
+  );
   const primaryVideo = videoArtifacts.find((a) => a.name.includes("final_captioned")) || videoArtifacts[0] || null;
   const srtArtifact = job.artifacts.find((a) => a.kind === "srt" || a.name.endsWith(".srt"));
 

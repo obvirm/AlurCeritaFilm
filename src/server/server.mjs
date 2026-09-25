@@ -768,13 +768,16 @@ const server = http.createServer(async (req, res) => {
       execFileSync("ffmpeg", [
         "-nostdin", "-y",
         "-i", srcVideo,
+        "-stream_loop", "-1",
         "-i", musicPath,
-        "-filter_complex", `[1:a]volume=${level},apad[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]`,
+        "-filter_complex", `[1:a]volume=${level}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]`,
         "-map", "0:v", "-map", "[a]",
         "-c:v", "copy", "-c:a", "aac", "-movflags", "+faststart",
         outPath,
       ], { stdio: "pipe" });
-      dbAddArtifact(job.id, { name: outName, path: outPath, kind: "video" });
+      if (!arts.some((a) => a.name === outName)) {
+        dbAddArtifact(job.id, { name: outName, path: outPath, kind: "video" });
+      }
       pushLog(job, `[bgm] ${path.basename(srcVideo)} + ${path.basename(musicPath)} (level ${level}) -> ${outName}`);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ ok: true, name: outName }));
