@@ -703,7 +703,7 @@ const server = http.createServer(async (req, res) => {
       outputMode: input.outputMode === "auto" || input.outputMode === "manual" ? input.outputMode : "one",
       parts: input.parts !== undefined ? Number(input.parts) : (Number(process.env.PARTS) > 0 ? Number(process.env.PARTS) : 0),
       minutesPerPart: Number(input.minutesPerPart) > 0 ? Number(input.minutesPerPart) : (Number(process.env.MINUTES_PER_PART) > 0 ? Number(process.env.MINUTES_PER_PART) : 2),
-      targetMinutes: Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0,
+      targetMinutes: input.targetMinutes !== undefined ? (Number(input.targetMinutes) > 0 ? Number(input.targetMinutes) : 0) : (Number(process.env.TARGET_MINUTES) > 0 ? Number(process.env.TARGET_MINUTES) : 3),
       bgm: input.bgm ? String(input.bgm) : undefined,
       overlayMode: input.overlayMode === "image" || input.overlayMode === "css" ? input.overlayMode : "none",
       overlayImage: input.overlayImage ? String(input.overlayImage) : undefined,

@@ -23,7 +23,7 @@ export function NewJob() {
   const [outputMode, setOutputMode] = useState<"one" | "auto" | "manual">("one");
   const [minutesPerPart, setMinutesPerPart] = useState(2);
   const [parts, setParts] = useState(0);
-  const [targetMinutes, setTargetMinutes] = useState(0);
+  const [targetMinutes, setTargetMinutes] = useState(3);
   const [stretch, setStretch] = useState<number | undefined>(undefined);
   const [hzoom, setHzoom] = useState<number | undefined>(1.15);
   const [speedMin, setSpeedMin] = useState<number | undefined>(0.5);
