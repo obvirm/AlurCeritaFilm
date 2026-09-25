@@ -95,6 +95,11 @@ async function run(options: Args): Promise<void> {
     // tulis disk raksasa + QuotaExceededError berulang.
     const userDataDir = process.env.CHROME_USER_DATA_DIR || '/tmp/m2s-chrome-profile';
     await mkdir(userDataDir, { recursive: true });
+    // Lock basi dari container/proses mati (profile persisten di volume) —
+    // tanpa ini Chrome menolak start. Concurrency guard server = 1 job aktif.
+    for (const f of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+      try { fs.rmSync(path.join(userDataDir, f), { force: true }); } catch {}
+    }
     const context = await chromium.launchPersistentContext(userDataDir, { executablePath, headless: true });
       // Transfer hasil via binding per-chunk (base64) langsung ke file output.
       // Tidak lewat pipeline download browser: rapuh saat disk sistem (C:) penuh.

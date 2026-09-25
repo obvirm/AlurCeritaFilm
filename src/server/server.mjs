@@ -286,6 +286,48 @@ async function runPipeline(job, input) {
   const modeLabel = outputMode === "manual" ? `Manual Split (${parts} part)` : outputMode === "auto" ? `Auto Split (target ${minutesPerPart} menit/part)` : "One Short";
   pushLog(job, `Chunk  : ${chunkEnabled ? `${chunkDuration}s (chunk)` : "FULL (tanpa chunk)"} | Output: ${modeLabel}${recapLabel} | Stretch: ${stretch ?? "-"} | hZoom: ${hzoom ?? "-"} | Caption: ${caption ? "ON" : "OFF"} | BGM: ${bgmPath ? path.basename(bgmPath) : "OFF"} | Jeda TTS: lead ${lead ?? 5}s + tail ${tail ?? 5}s`);
 
+  // 0. CAPTION-ONLY (bypass AI: tanpa analysis/TTS/render — anti rate limit) --
+  // HARUS di sini (sebelum ANALYSIS) agar VLM tidak terpanggil sama sekali.
+  // videoPath = video jadi yang mau di-caption (+acters SRT whisper).
+  if (input.captionOnly) {
+    const onlyTpl = input.template || "loki";
+    const onlyLang = input.language || process.env.LANGUAGE || "Indonesian";
+    const onlyOut = path.join(job.dir, `final_captioned_${onlyTpl}.mp4`);
+    const onlySrt = path.join(job.dir, `final_captioned_${onlyTpl}.srt`);
+    const onlyRel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
+    pushStatus(job, "running", "caption");
+    await run(job, `CAPTION TSCAPS (${onlyTpl})`, process.execPath, [
+      CFG.tsxCli, "src/caption/render.ts",
+      "--template", onlyTpl,
+      "--video", videoPath,
+      "--output", onlyOut,
+      "--srt-out", onlySrt,
+      "--width", "1080",
+      "--height", "1920",
+      "--language", onlyLang,
+      ...(input.whisperQuality ? ["--whisper-quality", input.whisperQuality] : []),
+    ], {
+      env: {
+        TSCAPS_CHROME_PATH: CFG.tscapsChrome,
+        PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath,
+        TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates,
+        TSCAPS_WHISPER_LANGUAGE: onlyLang,
+        CHROME_USER_DATA_DIR: process.env.CHROME_USER_DATA_DIR || "/tmp/m2s-chrome-profile",
+      },
+    });
+    pushLog(job, `[caption] selesai -> ${onlyRel(onlyOut)}`);
+    dbAddArtifact(job.id, { name: onlyRel(onlyOut), path: onlyOut, kind: "video" });
+    if (fs.existsSync(onlySrt)) {
+      pushLog(job, `[caption] srt -> ${onlyRel(onlySrt)}`);
+      dbAddArtifact(job.id, { name: onlyRel(onlySrt), path: onlySrt, kind: "text" });
+    }
+    pushStatus(job, "done");
+    pushLog(job, `\n✅ Caption-only selesai.`);
+    return;
+  }
+
+  // 1. ANALYSIS -------------------------------------------------------------
+
   // 1. ANALYSIS -------------------------------------------------------------
   pushStatus(job, "running", "analysis");
   const manifestPath = path.join(job.dir, "manifest.json");
@@ -317,44 +359,6 @@ async function runPipeline(job, input) {
   pushLog(job, "[analysis] selesai -> manifest.json");
 
   const rel = (p) => path.relative(job.dir, p).split(path.sep).join("/");
-
-  // 0. CAPTION-ONLY (bypass AI: tanpa analysis/TTS/render — anti rate limit) --
-  // videoPath = video jadi yang mau di-caption (+acters SRT whisper).
-  if (input.captionOnly) {
-    const onlyTpl = input.template || "loki";
-    const onlyLang = input.language || process.env.LANGUAGE || "Indonesian";
-    const onlyOut = path.join(job.dir, `final_captioned_${onlyTpl}.mp4`);
-    const onlySrt = path.join(job.dir, `final_captioned_${onlyTpl}.srt`);
-    pushStatus(job, "running", "caption");
-    await run(job, `CAPTION TSCAPS (${onlyTpl})`, process.execPath, [
-      CFG.tsxCli, "src/caption/render.ts",
-      "--template", onlyTpl,
-      "--video", videoPath,
-      "--output", onlyOut,
-      "--srt-out", onlySrt,
-      "--width", "1080",
-      "--height", "1920",
-      "--language", onlyLang,
-      ...(input.whisperQuality ? ["--whisper-quality", input.whisperQuality] : []),
-    ], {
-      env: {
-        TSCAPS_CHROME_PATH: CFG.tscapsChrome,
-        PLAYWRIGHT_BROWSERS_PATH: CFG.playwrightBrowsersPath,
-        TSCAPS_TEMPLATES_DIR: CFG.tscapsTemplates,
-        TSCAPS_WHISPER_LANGUAGE: onlyLang,
-        CHROME_USER_DATA_DIR: process.env.CHROME_USER_DATA_DIR || "/tmp/m2s-chrome-profile",
-      },
-    });
-    pushLog(job, `[caption] selesai -> ${rel(onlyOut)}`);
-    dbAddArtifact(job.id, { name: rel(onlyOut), path: onlyOut, kind: "video" });
-    if (fs.existsSync(onlySrt)) {
-      pushLog(job, `[caption] srt -> ${rel(onlySrt)}`);
-      dbAddArtifact(job.id, { name: rel(onlySrt), path: onlySrt, kind: "text" });
-    }
-    pushStatus(job, "done");
-    pushLog(job, `\n✅ Caption-only selesai.`);
-    return;
-  }
 
   // 1.5 CONDENSE (opsional) ---------------------------------------------------
   // Satu short FULL-SPOILER berdurasi target dari video panjang: LLM memilih
@@ -446,7 +450,11 @@ async function runPipeline(job, input) {
     const partDir = partDirs[p];
     const isMulti = partDirs.length > 1;
     const partTag = isMulti ? `[part-${String(p + 1).padStart(2, "0")}/${partDirs.length}] ` : "";
-    const partManifest = path.join(partDir, "manifest.json");
+    // One Short + condense: render dari manifest_condensed (bukan manifest penuh),
+    // agar durasi target dipatuhi. Mode split: manifest per part dari splitter.
+    const partManifest = (partDirs.length === 1 && effectiveManifest && effectiveManifest !== manifestPath)
+      ? effectiveManifest
+      : path.join(partDir, "manifest.json");
     // Mode split: audio + durations hasil potongan per part.
     // One Short: langsung track penuh dari stage TTS.
     const narrationWav = isMulti ? path.join(partDir, "narration_part.wav") : fullNarrationWav;

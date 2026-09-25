@@ -37,12 +37,13 @@ async function main() {
   if (!scenes.length) throw new Error("Manifest kosong (0 scene)");
 
   const budgetChars = Math.floor(seconds * CHARS_PER_SEC);
+  const minChars = Math.floor(budgetChars * 0.85);
   const digest = scenes
     .map((s: any) => `[${s.start_sec}s-${s.end_sec}s] ${s.description || ""} || ${s.narration_text || ""}`)
     .join("\n");
 
   const prompt = `Kamu merangkum video panjang jadi SATU short full-spoiler berdurasi ±${seconds} detik.
-Total narration_text SEMUA scene yang kamu pilih (digabung) MAKSIMAL ${budgetChars} karakter.
+Total narration_text SEMUA scene yang kamu pilih (digabung) HARUS ${minChars}-${budgetChars} karakter (kejar mendekati ${budgetChars}, JANGAN di bawah ${minChars}).
 
 Aturan:
 1. Pilih subset scene KRONOLOGIS (awal->tengah->klimaks->akhir), buang yang tidak penting.
